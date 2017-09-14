@@ -1,0 +1,324 @@
+import_C("netinet/tecs_tcp_var.h");
+
+
+signature sTCPCEPAPI4 {
+    ER      accept([in]Descriptor(sREP4) desc, [out]T_IPV4EP *dstep4, [in]TMO tmout);
+    ER      connect([in]T_IN4_ADDR myaddr, [in]uint16_t myport, [in]T_IN4_ADDR dstaddr, [in]uint16_t dstport, [in]TMO tmout);
+    ER_UINT send([in,size_is(len)]const int8_t *data, [in]int32_t len, [in]TMO tmout);
+    ER_UINT receive([out,size_is(len)]int8_t *data, [in]int32_t len, [in]TMO tmout);
+    ER      cancel([in]FN fncd);
+    ER      close([in]TMO tmout);
+    ER      shutdown(void);
+};
+
+signature sTCPCEPAPI {
+    ER      accept([in]Descriptor(sREP4) desc, [out]uint16_t *dstport, [in]TMO tmout);
+    ER      connect([in,size_is(addrlen)]const int8_t *myaddr, [in]uint16_t myport,
+                    [in,size_is(addrlen)]const int8_t *dstaddr, [in]uint16_t dstport, [in]int32_t addrlen, [in]TMO tmout);
+    ER_UINT send([in,size_is(len)]const int8_t *data, [in]int32_t len, [in]TMO tmout);
+    ER_UINT receive([out,size_is(len)]int8_t *data, [in]int32_t len, [in]TMO tmout);
+    ER      cancel([in]FN fncd);
+    ER      close([in]TMO tmout);
+    ER      shutdown(void);
+};
+
+signature sTCPCEPInput {
+    ER      check([in,size_is(len)]const int8_t *dstaddr, [in,size_is(len)]const int8_t *srcaddr,
+                  [in]int32_t len, [in]uint16_t dstport, [in]uint16_t srcport);
+    ER      input([send(sNetworkAlloc), size_is(size)]int8_t *inputp, [in]int32_t size);
+    void    notify([in]ER error);
+};
+
+signature sGetAddress2 {
+    int8_t* getMyAddress(void);
+    int8_t* getDstAddress(void);
+    void    setMy4Address([in]T_IN4_ADDR addr);
+    void    setDst4Address([in]T_IN4_ADDR addr);
+};
+
+signature sTCPFunctions {
+    T_TCP_SEQ   getTcpIss(void);
+    void        setTcpIss([in]T_TCP_SEQ iss);
+    T_TCP_SEQ   initTcpIss(void);
+    T_TCP_TIME  tcpRexmtValue([in]T_TCP_TIME srtt, [in]T_TCP_TIME rttvar);
+    T_TCP_TIME  tcpRangeSet([in]T_TCP_TIME value, [in]T_TCP_TIME tvmin, [in]T_TCP_TIME tvmax);
+};
+
+
+signature sTCPOutputStart {
+    ER      outputStart(void);
+    ER      timerFunction(void);
+};
+
+signature sTCPOutput {
+    ER          output([send(sNetworkAlloc),size_is(size)]int8_t *outputp, [in]int32_t size,
+                       [in,size_is(addrlen)]const int8_t *dstaddr, [in,size_is(addrlen)]const int8_t *srcaddr, [in]int32_t addrlen);
+    ER          getOffset([inout]T_OFF_BUF *offset);
+    T_IN4_ADDR  getIPv4Address(void);
+    ER          respond([send(sNetworkAlloc),size_is(size)]int8_t *outputp, [in]int32_t size, [inout]T_TCP_CEP *cep,
+                        [in]T_TCP_SEQ ack, [in]T_TCP_SEQ seq, [in]uint32_t rbfree, [in]uint8_t flags);
+    ER          allocAndRespond([in,size_is(addrlen)]const int8_t *dstaddr, [in,size_is(addrlen)]const int8_t *srcaddr, [in]int32_t addrlen,
+                                [in]uint16_t dstport, [in]uint16_t srcport,
+                                [in]T_TCP_SEQ ack, [in]T_TCP_SEQ seq, [in]uint32_t rbfree, [in]uint8_t flags, [in]T_OFF_BUF offset);
+};
+
+signature sCopySave {
+    void        tcpWriteRwbuf([inout]T_TCP_CEP *cep, [inout,size_is(size)]int8_t *inputp, [in]int32_t size,
+                              [in]uint8_t thoff, [inout,size_is(len)]int8_t *rbuf, [in]int32_t len);
+    void        tcpReadSwbuf([inout]T_TCP_CEP *cep, [inout,size_is(size)]int8_t *outputp, [in]int32_t size,
+                             [in]uint32_t doff, [inout,size_is(buflen)]int8_t *sbuf, [in]int32_t buflen, [in]int32_t hoff, [in]int32_t len);
+    ER          tcpWaitSwbuf([inout]T_TCP_CEP *cep, [inout]uint32_t *flags, [in]int32_t sbufSize, [in]TMO tmout);
+    ER_UINT     tcpWriteSwbuf([inout]T_TCP_CEP *cep, [inout,size_is(datalen)]int8_t *data, [in]int32_t datalen,
+                              [inout,size_is(buflen)]int8_t *sbuf, [in]int32_t buflen);
+    ER          tcpIsSwbufFull([inout]T_TCP_CEP *cep, [in]int32_t sbufSize);
+    uint32_t    tcpReadRwbuf([inout]T_TCP_CEP *cep, [inout,size_is(datalen)]int8_t *data, [in]int32_t datalen,
+                             [inout,size_is(buflen)]int8_t *rbuf, [in]int32_t buflen);
+    void        tcpDropSwbuf([inout]T_TCP_CEP *cep, [in]uint32_t len, [in,size_is(sbufSize)]const int8_t *sbuf, [in]int32_t sbufSize, [inout]uint32_t *flags);
+    void        tcpFreeRwbufq([inout]T_TCP_CEP *cep);
+    void        tcpFreeSwbufq([inout]T_TCP_CEP *cep);
+};
+
+[singleton]
+celltype tTCPFunctions {
+
+    require tKernel.eKernel;
+    //require tTINET.eTINET;
+
+    entry sTCPFunctions eTCPFunctions;
+
+    var {
+        T_TCP_SEQ tcpIss = 0;
+    };
+};
+
+
+[singleton]
+celltype tTCPInput {
+
+    call sTCPCEPInput cCEPInput[];
+    call sTCPOutput cTCPRespond;
+    [optional]call sIPv4CheckSum cIPv4CheckSum;
+
+    entry sTCPInput eInput;
+};
+
+
+
+celltype tTCPOutputBody {
+
+    //require tTINET.eTINET;
+
+    [optional]call sIPv4Output cIPv4Output;
+    [optional]call sIPv4CheckSum cIPv4CheckSum;
+    call sTCPOutputStart cTCPOutputStart[];
+    call sSemaphore cSemaphoreTcppost;
+    call sTCPFunctions cTCPFunctions;
+
+    call sNetworkTimer cNetworkTimer;
+
+    entry sTaskBody eTaskBody;
+    entry sTCPOutput eTCPOutput;
+
+    entry sCallTimerFunction eCallTimerFunction;
+};
+
+/*//mikan TECSで呼び口配列を複合セルに対応していない？TCPをcompositeできない
+[singleton]
+composite tTCP{
+    [optional]call sIPv4Output cIPv4Output;
+    [optional]call sIPv4CheckSum cIPv4CheckSum;
+    call sTCPOutputStart cTCPOutputStart[];
+    call sTCPCEPInput cCEPInput[];
+    call sNetworkTimer cNetworkTimer;
+    entry sTCPFunctions eTCPFunctions;
+    entry sTCPInput eInput;
+    entry sTCPOutput eTCPOutput;
+    entry sCallTimerFunction eCallTimerFunction;
+    entry sSemaphore eSemaphoreTcpcep;
+    entry sSemaphore eSemaphoreTcppost;
+
+    cell tSemaphore SemaphoreTcpcep{
+        attribute = C_EXP("TA_TPRI");
+        count = 1;
+        max = 1;
+    };
+
+    cell tSemaphore SemaphoreTcppost{
+        attribute = C_EXP("TA_TPRI");
+        count = 0;
+        max = 1;
+    };
+
+    cell tTCPFunctions TCPFunctions{
+    };
+
+    cell tTCPOutputBody TCPOutputBody{
+        cTCPOutputStart[] = composite.cTCPOutputStart[];
+        cIPv4Output = composite.cIPv4Output;
+        cIPv4CheckSum = composite.cIPv4CheckSum;
+        cSemaphore = SemaphoreTcppost.eSemaphore;
+        cNetworkTimer = composite.cNetworkTimer;
+        cTCPFunctions = TCPFunctions.eTCPFunctions;
+    };
+    cell tTCPInput TCPInput{
+        cCEPInput[] => composite.cCEPInput[];
+        cIPv4CheckSum =>composite.cIPv4CheckSum;
+        cTCPRespond = TCPOutputBody.eTCPOutput;
+    };
+
+    composite.eInput => TCPInput.eInput;
+    composite.eTCPOutput => TCPOutputBody.eTCPOutput;
+    composite.eCallTimerFunction => TCPOutputBody.eCallTimerFunction;
+    composite.eTCPFunctions => TCPFunctions.eTCPFunctions;
+    composite.eSemaphoreTcpcep => SemaphoreTcpcep.eSemaphore;
+    composite.eSemaphoreTcppost =>SemaphoreTcppost.eSemaphore;
+};*/
+
+celltype tTCPCEPwrapper4 {
+
+    call sTCPCEPAPI cAPI;
+
+    entry sTCPCEPAPI4 eAPI4;
+    entry sGetAddress2 eGetAddress4;
+
+    var {
+        T_IN4_ADDR myaddr;
+        T_IN4_ADDR dstaddr;
+    };
+};
+
+celltype tCopySave {
+
+    call sSemaphore cSemaphore;
+    call sSemaphore cSemaphoreTcppost;
+
+    call sEventflag cSendFlag;
+    call sEventflag cRcvFlag;
+
+    entry sCopySave eCopySave;
+};
+
+celltype tTCPCEP {
+
+    require tKernel.eKernel;
+    //require tTINET.eTINET;
+
+    call sRepSelector cRepSelector;
+
+    call sCopySave cCopySave;
+    call sTCPOutput cTCPOutput;
+    call sTCPFunctions cTCPFunctions;
+    call sGetAddress2 cGetAddress;
+    call sSemaphore cSemaphore;
+    call sSemaphore cSemaphoreTcppost;
+    call sSemaphore cSemaphoreTcpcep;
+    call sEventflag cSendFlag;
+    call sEventflag cRcvFlag;
+    call sEventflag cEstFlag;
+    [dynamic,optional]call sREP4 cREP4;                     //mikan v4限定になってるしホントはdynamicと記述したい
+    [optional]call sTask cCallingSendTask;
+    [optional]call sTask cCallingReceiveTask;
+
+
+    entry sTCPOutputStart eTCPOutputStart;
+    entry sTCPCEPInput eCEPInput;
+    entry sTCPCEPAPI eAPI;
+    entry sRoutineBody eInitializeRoutineBody;      //mikan 構造体初期化ができないため
+
+    attr {
+        int32_t sbufSizeInit;
+        int32_t rbufSizeInit;
+        int8_t  ipLength;
+    };
+
+    var {
+        T_OFF_BUF   offset;
+        uint16_t    myport;
+        uint16_t    dstport;
+        int32_t     sbufSize = sbufSizeInit;
+        int32_t     rbufSize = rbufSizeInit;
+        [size_is(sbufSizeInit)]int8_t *sbuf;
+        [size_is(rbufSizeInit)]int8_t *rbuf;
+        uint32_t	flags    = C_EXP("TCP_CEP_FLG_VALID");		/* 通信端点フラグ */
+        T_TCP_CEP   cep;                                        /* 通信端点管理ブロック */
+    };
+};
+
+[active]
+composite tTCPCEP4 {
+
+    call sRepSelector cRepSelector;
+
+    call sTCPFunctions  cTCPFunctions;
+    call sSemaphore     cSemaphoreTcppost;
+    call sSemaphore     cSemaphoreTcpcep;
+    call sTCPOutput     cTCPOutput;
+
+    entry sTCPCEPInput      eCEPInput;
+    entry sTCPCEPAPI4       eAPI;
+    entry sTCPOutputStart   eTCPOutputStart;
+
+    attr{
+        int32_t sbufSize;
+        int32_t rbufSize;
+    };
+
+    cell tSemaphore Semaphore {
+        attribute    = C_EXP("TA_TPRI");
+        initialCount = 1;
+        maxCount     = 1;
+    };
+
+    cell tEventflag SendFlag {
+        attribute   = C_EXP("TA_TFIFO|TA_WSGL");
+        flagPattern = C_EXP("TCP_CEP_EVT_SWBUF_READY");
+    };
+    cell tEventflag RcvFlag {
+        attribute   = C_EXP("TA_TFIFO|TA_WSGL");
+        flagPattern = 0;
+    };
+    cell tEventflag EstFlag {
+        attribute   = C_EXP("TA_TFIFO|TA_WSGL");
+        flagPattern = C_EXP("TCP_CEP_EVT_CLOSED");
+    };
+
+    cell tCopySave CopySave {
+        cSemaphoreTcppost => composite.cSemaphoreTcppost;
+        cSemaphore  = Semaphore.eSemaphore;
+        cSendFlag   = SendFlag.eEventflag;
+        cRcvFlag    = RcvFlag.eEventflag;
+    };
+
+    cell tTCPCEPwrapper4 TCPCEPwrapper4;
+
+    cell tTCPCEP TCPCEP {
+        ipLength     = 4;
+        sbufSizeInit = composite.sbufSize;
+        rbufSizeInit = composite.rbufSize;
+
+        cRepSelector        => composite.cRepSelector;
+
+        cCopySave           = CopySave.eCopySave;
+        cTCPFunctions       => composite.cTCPFunctions;
+        cSemaphoreTcppost   => composite.cSemaphoreTcppost;
+        cSemaphoreTcpcep    => composite.cSemaphoreTcpcep;
+        cSemaphore          = Semaphore.eSemaphore;
+        cSendFlag           = SendFlag.eEventflag;
+        cRcvFlag            = RcvFlag.eEventflag;
+        cEstFlag            = EstFlag.eEventflag;
+        cGetAddress         = TCPCEPwrapper4.eGetAddress4;
+        cTCPOutput          => composite.cTCPOutput;
+    };
+
+    cell tTCPCEPwrapper4 TCPCEPwrapper4 {
+        cAPI = TCPCEP.eAPI;
+    };
+
+    cell tInitializeRoutine InitializeRoutine {
+        cInitializeRoutineBody = TCPCEP.eInitializeRoutineBody;
+    };
+
+    composite.eCEPInput       => TCPCEP.eCEPInput;
+    composite.eAPI            => TCPCEPwrapper4.eAPI4;
+    composite.eTCPOutputStart => TCPCEP.eTCPOutputStart;
+};

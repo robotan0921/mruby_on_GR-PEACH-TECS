@@ -1,0 +1,139 @@
+/**
+* ethernet.cfg
+*
+*CRE_TSK(ETHER_OUTPUT_TASK, { TA_HLNG       , 0, ether_output_task, ETHER_OUTPUT_PRIORITY, ETHER_OUTPUT_STACK_SIZE, NULL });
+*CRE_TSK(ETHER_INPUT_TASK,  { TA_HLNG|TA_ACT, 0, ether_input_task,  ETHER_INPUT_PRIORITY,  ETHER_INPUT_STACK_SIZE,  NULL });
+*
+*CRE_DTQ(DTQ_ETHER_OUTPUT,  { TA_TFIFO, NUM_DTQ_ETHER_OUTPUT,  NULL });
+*
+** サポート関数 max2str 用セマフォ
+*
+*CRE_SEM(SEM_MAC2STR_BUFF_LOCK,	{ TA_TPRI, 1, 1 });
+**/
+
+/*     イーサネット出力タスク
+          ID：ETHER_OUTPUT_TASK
+          優先度：5
+          初期状態：TA_HLNG
+          呼出し関数：ehter_output_task(net/ethernet.c)
+          スタックサイズ：1024
+     イーサネット入力タスク
+          ID：ETHER_INPUT_TASK
+          優先度：5
+          初期状態：TA_HLNG
+          呼出し関数：ehter_input_task(net/ethernet.c)
+          スタックサイズ：1024
+*/
+import_C("net/tecs_ethernet.h");
+
+signature sArpInput {
+    void arpInitialize(void);
+    void arpInput([send(sNetworkAlloc),size_is(size)] int8_t *inputp,[in]int32_t size,[in,size_is(6)]const uint8_t *macaddress);
+};
+
+signature sIPv4Input {
+    void IPv4Input([send(sNetworkAlloc),size_is(size)] int8_t *inputp,[in]int32_t size);
+};
+
+
+celltype tEthernetInputTaskBody {
+
+    call sSemaphore cSemaphoreReceive;
+    call sNicDriver cNicDriver;
+
+    [optional]call sTask cTaskEthernetOutput;
+    call sTask cTaskNetworkTimer;
+
+    [optional]call sArpInput cArpInput;
+    [optional]call sIPv4Input cIPv4Input;
+
+    entry sTaskBody eTaskBody;
+};
+
+
+
+signature sEthernetRawOutput {
+    ER ethernetRawOutput([send(sNetworkAlloc),size_is(size)]int8_t *outputp,[in]int32_t size,[in]TMO tmout);
+};
+
+signature sArpOutput {
+    ER arpResolve([send(sNetworkAlloc),size_is(size)] int8_t *outputp,[in]int32_t size,[in]T_IN4_ADDR dstaddr,[in,size_is(6)]const uint8_t *macaddress,[in]TMO tmout);
+};
+
+signature sEthernetOutput {
+    ER ethernetOutput([send(sNetworkAlloc),size_is(size)] int8_t *outputp,[in]int32_t size,[in]T_IN4_ADDR dstaddr,[in]TMO tmout);
+};
+
+celltype tEthernetOutput {
+    call sEthernetRawOutput cRawOutput;
+    call sNicDriver cNicDriver;
+    [optional]call sArpOutput cArpOutput;
+
+    entry sEthernetOutput eEthernetOutput;
+};
+
+celltype tEthernetOutputTaskBody {
+
+    require tKernel.eKernel;
+
+    call sSemaphore cSemaphoreSend;
+    call sDataqueue cDataqueue;
+    call sNicDriver cNicDriver;
+
+    [optional]call sSemaphore cSemaphoreTcppost;
+
+    entry sEthernetRawOutput eRawOutput;
+    entry sTaskBody eTaskBody;
+};
+
+/* コンポジット内部のセンドレシーブが使えない
+[active]
+composite tEthernetOutputComposite{
+
+    attr{
+        uint_t countQueue;
+        PRI taskPriority;
+        SIZE taskSize;
+    };
+
+    call sNicDriver cNicDriver;
+    call sSemaphore cSemaphoreSend;
+    [optional]call sArpOutput cArpOutput;
+
+    entry sTask eEthernetOutputTask;
+    entry sEthernetRawOutput eRawOutput;
+    entry sEthernetOutput eEthernetOutput;
+
+
+    cell tDataqueue Dataqueue{
+        attribute = C_EXP("TA_NULL");
+        count = composite.countQueue;
+        pdqmb = C_EXP("NULL");
+    };
+
+    [allocator(eRawOutput.ethernetRawOutput.output=NetworkBuffer.eNetworkAlloc)]
+    cell tEthernetOutputTaskBody EthernetOutputTaskBody{
+        cNicDriver => composite.cNicDriver;
+        cSemaphoreSend =>composite.cSemaphoreSend;
+        cDataqueue = Dataqueue.eDataqueue;
+    };
+
+    cell tTask Task{
+        cBody = EthernetOutputTaskBody.eBody;
+
+        taskAttribute = C_EXP("TA_NULL");
+        priority = taskPriority;
+        stackSize = taskSize;
+    };
+
+    cell tEthernetOutput EthernerOutput{
+        cRawOutput = EthernetOutputTaskBody.eRawOutput;
+        cArpOutput => composite.cArpOutput;
+        cNicDriver => composite.cNicDriver;
+    };
+
+    composite.eEthernetOutputTask => Task.eTask;
+    composite.eRawOutput => EthernetOutputTaskBody.eRawOutput;
+    composite.eEthernetOutput => EthernerOutput.eEthernetOutput;
+};
+*/

@@ -1,0 +1,5 @@
+
+[singleton, active]
+celltype tIfMbedAdapter {
+	call	sNicDriver cNicDriver;
+};

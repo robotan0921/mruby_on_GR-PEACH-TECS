@@ -1,0 +1,204 @@
+
+//TINET用にサイズを知ることができるメモリプールを用意する
+
+signature sMemoryPoolStatus {
+    uint32_t getSize(void);
+};
+
+/*
+ *  固定長メモリプール
+ */
+celltype tNewFixedSizeMemoryPool {
+	[inline] entry sFixedSizeMemoryPool eFixedSizeMemoryPool;   /* 固定長メモリプール操作（タスクコンテキスト用）*/
+    [inline] entry sMemoryPoolStatus eMemoryPoolStatus;         /* 追加：メモリプールのサイズを取得する */
+
+	attr {
+		ID id = C_EXP( "MPFID_$id$" );
+		/*
+ 		 * TA_NULL デフォルト値（FIFO待ち）
+		 * TA_TPRI 待ち行列をタスクの優先度順にする
+		 */
+		[omit] ATR attribute = C_EXP("TA_NULL");
+		[omit] uint32_t blockCount;
+		uint32_t blockSize;
+		[omit] MPF_T *mpf = C_EXP("NULL");
+		/*固定長メモリプール管理領域の先頭番地*/
+		[omit] void *mpfmb = C_EXP("NULL");
+	};
+
+	factory {
+		write("tecsgen.cfg","CRE_MPF( %s, {%s, %s, %s, %s, %s} );",
+			  id, attribute, blockCount, blockSize, mpf, mpfmb);
+	};
+	FACTORY {
+		write( "$ct$_factory.h", "#include \"kernel_cfg.h\"" );
+	};
+};
+
+
+
+//ネットワークバッファ用の定義をインクルード
+import_C("tinet/net/tecs_net_buf.h");
+
+//ネットワークバッファの数
+const uint8_t NUM_NETWORK_BUFFER = 6;
+
+//ネットワークバッファのサイズ＊大きい順
+const uint32_t SIZE_000 = 1534;
+const uint32_t SIZE_001 = 1044;
+const uint32_t SIZE_002 = 532;
+const uint32_t SIZE_003 = 276;
+const uint32_t SIZE_004 = 148;
+const uint32_t SIZE_005 = 76;
+
+//ネットワークバッファの個数
+const uint8_t COUNT_000 = 5;
+const uint8_t COUNT_001 = 1;
+const uint8_t COUNT_002 = 1;
+const uint8_t COUNT_003 = 1;
+const uint8_t COUNT_004 = 1;
+const uint8_t COUNT_005 = 2;
+
+
+
+signature sNetworkAlloc {
+    ER alloc([out] void **buf,[in]const int32_t minlen, [in]TMO tmout);
+    ER dealloc([in] const void *buf);
+    ER reuse([inout] void *buf);
+    ER_UINT bufferSize([in]const void *buf);
+    uint32_t bufferMaxSize(void);
+};
+
+[singleton]
+celltype tNetworkBuffer {
+
+    entry sNetworkAlloc eNetworkAlloc;
+
+    //バッファの数は可変。サイズの大きい順に0からくっつける。
+    [optional]call sFixedSizeMemoryPool cFixedSizeMemoryPool[NUM_NETWORK_BUFFER];
+    [optional]call sMemoryPoolStatus cMemoryPoolStatus[NUM_NETWORK_BUFFER];
+
+};
+
+
+//************************************************
+
+//            組み上げ宣言
+
+//************************************************
+
+
+[generate(RepeatCellPlugin,"count = NUM_NETWORK_BUFFER")]
+cell tNewFixedSizeMemoryPool NetworkBuffer_000 {
+    blockCount = COUNT_000;
+    blockSize = SIZE_000;
+};
+
+[generate(RepeatPlugin,"count = NUM_NETWORK_BUFFER")]
+cell tNetworkBuffer NetworkBuffer {
+    cFixedSizeMemoryPool[0] = NetworkBuffer_000.eFixedSizeMemoryPool;
+    cMemoryPoolStatus[0] = NetworkBuffer_000.eMemoryPoolStatus;
+};
+/*cell tNetworkBuffer NetworkBuffer{
+
+    size = {SIZE_000,SIZE_001,SIZE_002,SIZE_003,SIZE_004,SIZE_005};
+
+    cFixedSizeMemoryPool[0] = NetworkBuffer_000.eFixedSizeMemoryPool;
+    cFixedSizeMemoryPool[1] = NetworkBuffer_001.eFixedSizeMemoryPool;
+    cFixedSizeMemoryPool[2] = NetworkBuffer_002.eFixedSizeMemoryPool;
+    cFixedSizeMemoryPool[3] = NetworkBuffer_003.eFixedSizeMemoryPool;
+    cFixedSizeMemoryPool[4] = NetworkBuffer_004.eFixedSizeMemoryPool;
+    cFixedSizeMemoryPool[5] = NetworkBuffer_005.eFixedSizeMemoryPool;
+};
+/*
+[singleton]
+composite tNetworkBufferComposite {
+
+    entry sNetworkAlloc eNetworkAlloc;
+
+    attr{
+        [size_is(12)]uint8_t *size;
+        [size_is(12)]uint8_t *count;
+    };
+
+
+    //使わないバッファはコメントアウトが必要
+
+/*    cell tFixedSizeMemoryPool NetworkBuffer0 {
+        blockCount= composite.count[0];
+        blockSize = composite.size[0];
+    };
+    cell tFixedSizeMemoryPool NetworkBuffer1 {
+        blockCount= composite.count[1];
+        blockSize = composite.size[1];
+    };
+    cell tFixedSizeMemoryPool NetworkBuffer2 {
+        blockCount= composite.count[2];
+        blockSize = composite.size[2];
+    };*/
+/*    cell tFixedSizeMemoryPool NetworkBuffer3 {
+        blockCount= composite.count[3];
+        blockSize = composite.size[3];
+    };
+/*    cell tFixedSizeMemoryPool NetworkBuffer4 {
+        blockCount= composite.count[4];
+        blockSize = composite.size[4];
+    };*/
+/*    cell tFixedSizeMemoryPool NetworkBuffer5 {
+        blockCount= composite.count[5];
+        blockSize = composite.size[5];
+    };
+/*    cell tFixedSizeMemoryPool NetworkBuffer6 {
+        blockCount= composite.count[6];
+        blockSize = composite.size[6];
+    };*/
+/*    cell tFixedSizeMemoryPool NetworkBuffer7 {
+        blockCount= composite.count[7];
+        blockSize = composite.size[7];
+    };
+    cell tFixedSizeMemoryPool NetworkBuffer8 {
+        blockCount= composite.count[8];
+        blockSize = composite.size[8];
+    };
+    cell tFixedSizeMemoryPool NetworkBuffer9 {
+        blockCount= composite.count[9];
+        blockSize = composite.size[9];
+    };
+    cell tFixedSizeMemoryPool NetworkBuffer10 {
+        blockCount= composite.count[10];
+        blockSize = composite.size[10];
+    };
+/*    cell tFixedSizeMemoryPool NetworkBuffer11 {
+        blockCount= composite.count[11];
+        blockSize = composite.size[11];
+    };
+*/
+
+/*    cell tNetworkBuffer NetworkBuffer{
+//        cFixedSizeMemoryPool[0] = NetworkBuffer0.eFixedSizeMemoryPool;
+//        cFixedSizeMemoryPool[1] = NetworkBuffer1.eFixedSizeMemoryPool;
+//        cFixedSizeMemoryPool[2] = NetworkBuffer2.eFixedSizeMemoryPool;
+        cFixedSizeMemoryPool[3] = NetworkBuffer3.eFixedSizeMemoryPool;
+//        cFixedSizeMemoryPool[4] = NetworkBuffer4.eFixedSizeMemoryPool;
+        cFixedSizeMemoryPool[5] = NetworkBuffer5.eFixedSizeMemoryPool;
+//        cFixedSizeMemoryPool[6] = NetworkBuffer6.eFixedSizeMemoryPool;
+        cFixedSizeMemoryPool[7] = NetworkBuffer7.eFixedSizeMemoryPool;
+        cFixedSizeMemoryPool[8] = NetworkBuffer8.eFixedSizeMemoryPool;
+        cFixedSizeMemoryPool[9] = NetworkBuffer9.eFixedSizeMemoryPool;
+        cFixedSizeMemoryPool[10] = NetworkBuffer10.eFixedSizeMemoryPool;
+//        cFixedSizeMemoryPool[11] = NetworkBuffer11.eFixedSizeMemoryPool;
+
+
+        size = {composite.size[0],composite.size[1],composite.size[2],
+            composite.size[3],composite.size[4],composite.size[5],composite.size[6],
+            composite.size[7],composite.size[8],composite.size[9],composite.size[10],composite.size[11]};
+    };
+
+    composite.eNetworkAlloc => NetworkBuffer.eNetworkAlloc;
+};
+
+
+cell tNetworkBufferComposite NetworkBufferComposite{
+    sizs = {0,0,0,1514,0,1024,0,512,256,128,56,0};
+    count = {0,0,0,6,0,1,0,1,1,1,2,0};
+};*/

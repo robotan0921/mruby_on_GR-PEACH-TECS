@@ -1,0 +1,147 @@
+import_C("tinet/netdev/if_mbed/tecs_if_mbed.h");
+
+signature sNicDriver {
+    void init(void);
+    void start([send(sNetworkAlloc),size_is(size)] int8_t *outputp,[in]int32_t size,[in]uint8_t align);
+    T_NET_BUF* read([receive(sNetworkAlloc),size_is(*size)]int8_t **inputp,[out]int32_t *size,[in]uint8_t align);
+    void probe([out,size_is(6)]uint8_t *macaddress);
+    void reset(void);
+};
+
+celltype tIfMbed {
+	require tKernel.eKernel;
+
+	call siSemaphore ciSemaphoreSend;
+    call sSemaphore cSemaphoreReceive;
+	call sInterruptRequest cInterruptRequest;
+	call sNetworkTimer cNetworkTimer;
+    call sTask cTask;
+
+	entry sCallTimerFunction eWatchdogTimer;
+	entry sNicDriver eNicDriver;
+	entry siHandlerBody eiBody;
+
+	var {
+		uint8_t macaddr0;
+		uint8_t macaddr1;
+		uint8_t macaddr2;
+		uint8_t macaddr3;
+		uint8_t macaddr4;
+		uint8_t macaddr5;
+
+		uint16_t timer;
+
+        T_MBED_SOFTC *sc;
+	};
+};
+
+celltype tIfMbedPhyTaskBody {
+    require tKernel.eKernel;
+    entry sTaskBody eTaskBody;
+};
+
+/*
+[active]
+composite tIfMbedComposite {
+
+    call sNetworkTimer cNetworkTimer;
+
+    entry sSemaphore eSemaphoreSend;
+    entry sSemaphore eSemaphoreReceive;
+    entry sNicDriver eNicDriver;
+    entry sCallTimerFunction eWatchdogTimer;
+
+    attr{
+        INTNO interruptNumber;
+        PRI interruptPriority;
+        uint8_t mac0;
+        uint8_t mac1;
+        uint8_t mac2;
+        uint8_t mac3;
+        uint8_t mac4;
+        uint8_t mac5;
+    };
+
+    cell tMbed Mbed;
+
+    //ドライバ送受信用セマフォ
+    cell tSemaphore SemaphoreNicSend{
+        attribute = C_EXP("TA_TPRI");
+        initialCount = 1;
+        maxCount = 1;
+    };
+    cell tSemaphore SemaphoreNicReceive{
+        attribute = C_EXP("TA_TPRI");
+        initialCount = 0;
+        maxCount = 1;
+    };
+
+    cell tISRWithInterruptRequest NicInterrupt{
+
+        interruptNumber = composite.interruptNumber;
+        interruptAttribute = C_EXP("TA_ENAINT");
+        interruptPriority = composite.interruptPriority;
+        ciISRBody = Mbed.eiBody;
+    };
+
+    cell tMbed Mbed {
+
+        //MACアドレス指定ポイント
+        //macaddr = {composite.mac0,composite.mac1,composite.mac2,composite.mac3,composite.mac4,composite.mac5};
+
+        macaddr0 = composite.mac0;
+        macaddr1 = composite.mac1;
+        macaddr2 = composite.mac2;
+        macaddr3 = composite.mac3;
+        macaddr4 = composite.mac4;
+        macaddr5 = composite.mac5;
+
+        cSemaphoreSend = SemaphoreNicSend.eSemaphore;
+        ciSemaphoreReceive = SemaphoreNicReceive.eiSemaphore;
+
+        cInterruptRequest = NicInterrupt.eInterruptRequest;
+
+        cNetworkTimer => composite.cNetworkTimer;
+    };
+
+    composite.eSemaphoreSend => SemaphoreNicSend.eSemaphore;
+    composite.eSemaphoreReceive => SemaphoreNicReceive.eSemaphore;
+    composite.eWatchdogTimer => Mbed.eWatchdogTimer;
+    composite.eNicDriver => Mbed.eNicDriver;
+
+};
+*/
+
+/*
+ *  割込みサービスルーチンと割込み要求ラインの複合セルタイプ
+ */
+[active]
+composite tISRWithInterruptRequest {
+	entry sInterruptRequest eInterruptRequest;
+	call  siHandlerBody  ciISRBody;     /* 割込みサービスルーチン本体 */
+
+	attr {
+		/* 割込みサービスルーチン */
+		ATR   isrAttribute = C_EXP( "TA_NULL" );
+		PRI   isrPriority = 1;
+		INTNO interruptNumber;
+
+		/* 割込み要求ライン */
+		ATR   interruptAttribute =  C_EXP( "TA_NULL" );
+		PRI   interruptPriority;
+	};
+	/* 割込みサービスルーチン */
+	cell tISR ISRMain{
+		attribute = composite.isrAttribute;
+		isrPriority  = composite.isrPriority;
+		interruptNumber = composite.interruptNumber;
+		ciISRBody => composite.ciISRBody;
+	};
+	/* 割込み要求ライン */
+	cell tInterruptRequest InterruptRequest {
+		interruptNumber = composite.interruptNumber;
+		attribute = composite.interruptAttribute;
+		interruptPriority = composite.interruptPriority;
+	};
+	composite.eInterruptRequest => InterruptRequest.eInterruptRequest;
+};

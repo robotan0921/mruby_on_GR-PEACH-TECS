@@ -1,0 +1,71 @@
+#
+#		Makefile のmbed（RZ/A1用）
+#
+#  $Id: Makefile.chip 720 2016-04-01 22:16:17Z ertl-hiro $
+# 
+
+#
+#  mbedディレクトリ名の定義
+#
+MBEDDIR = $(SRCDIR)/mbed
+
+#
+#  コンパイルオプション
+#
+INCLUDES := $(INCLUDES)\
+	-I$(MBEDDIR)/api\
+	-I$(MBEDDIR)/hal\
+	-I$(MBEDDIR)/targets/cmsis\
+	-I$(MBEDDIR)/targets/cmsis/TARGET_RENESAS/TARGET_RZ_A1H\
+	-I$(MBEDDIR)/targets/cmsis/TARGET_RENESAS/TARGET_RZ_A1H/inc\
+	-I$(MBEDDIR)/targets/cmsis/TARGET_RENESAS/TARGET_RZ_A1H/inc/iodefines\
+	-I$(MBEDDIR)/targets/hal/TARGET_RENESAS/TARGET_RZ_A1H\
+	-I$(MBEDDIR)/targets/hal/TARGET_RENESAS/TARGET_RZ_A1H/TARGET_MBED_MBRZA1H
+COPTS := $(COPTS)\
+  -mthumb\
+  -mthumb-interwork\
+  -marm\
+  -march=armv7-a\
+  -mfpu=vfpv3\
+  -mfloat-abi=hard\
+  -mno-unaligned-access
+LDFLAGS := $(LDFLAGS)\
+  -mthumb\
+  -mthumb-interwork\
+  -marm\
+  -march=armv7-a\
+  -mfpu=vfpv3\
+  -mfloat-abi=hard\
+  -mno-unaligned-access
+CDEFS := $(CDEFS)\
+	-DTARGET_RZ_A1H\
+	-DTARGET_MBRZA1H\
+	-DTOOLCHAIN_GCC_ARM\
+	-DTOOLCHAIN_GCC\
+	-DTARGET_CORTEX_A\
+	-DMBED_BUILD_TIMESTAMP=1460441486.52\
+	-DTARGET_RENESAS\
+	-D__FPU_PRESENT
+
+#
+#  システムサービスに関する定義
+#
+SYSSVC_DIRS := $(SYSSVC_DIRS)\
+	$(MBEDDIR)/common\
+	$(MBEDDIR)/targets/cmsis/TARGET_RENESAS/TARGET_RZ_A1H\
+	$(MBEDDIR)/targets/cmsis/TARGET_RENESAS/TARGET_RZ_A1H/TOOLCHAIN_GCC_ARM\
+	$(MBEDDIR)/targets/cmsis/TOOLCHAIN_GCC/TARGET_CORTEX_A\
+	$(MBEDDIR)/targets/hal/TARGET_RENESAS/TARGET_RZ_A1H
+SYSSVC_ASMOBJS := $(SYSSVC_ASMOBJS)\
+	cache.o
+START_OBJS = startup_RZ1AH.o
+SYSSVC_COBJS := $(SYSSVC_COBJS)\
+	assert.o board.o error.o gpio.o lp_ticker_api.o mbed_interface.o\
+	pinmap_common.o rtc_time.o semihost_api.o ticker_api.o us_ticker_api.o\
+	wait_api.o\
+	RZ_A1_Init.o cmsis_nvic.o gic.o mbed_sf_boot.o mmu_Renesas_RZ_A1.o\
+	nvic_wrapper.o pl310.o rza_io_regrw.o system_MBRZA1H.o\
+	analogin_api.o can_api.o ethernet_api.o gpio_api.o gpio_irq_api.o i2c_api.o\
+	pinmap.o port_api.o pwmout_api.o rtc_api.o serial_api.o spi_api.o us_ticker.o
+CFG_DMY := cfg_dmy.o mmu_Renesas_RZ_A1.o mbed_sf_boot.o RZ_A1_Init.o system_MBRZA1H.o cache.o pl310.o gic.o
+

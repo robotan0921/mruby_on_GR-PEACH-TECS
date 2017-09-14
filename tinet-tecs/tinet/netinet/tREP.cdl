@@ -1,0 +1,60 @@
+signature sREP4 {
+    T_IPV4EP    getEndpoint(void);
+    ER          signal(void);
+    ER          wait(void);
+    ER 	        waitPolling(void);
+    ER          waitTimeout([in] TMO timeout);
+    ER 	        initialize(void);
+    ER 	        refer([out] T_RSEM *pk_semaphoreStatus);
+};
+
+celltype tREP4Body {
+
+    call sSemaphore cSemaphore;
+
+    entry sREP4 eREP4;
+
+    attr{
+        ATR         repatr = 0;
+        T_IN4_ADDR  myaddr;
+        uint16_t    myport;
+    };
+};
+
+composite tREP4 {
+
+    entry sREP4 eREP4;
+
+    attr {
+        T_IN4_ADDR  myaddr;
+        uint16_t    myport;
+    };
+
+    cell tSemaphore Semaphore {
+        attribute    = C_EXP("TA_TPRI");
+        initialCount = 1;
+        maxCount     = 1;
+    };
+
+    cell tREP4Body REP4Body {
+        myaddr      = composite.myaddr;
+        myport      = composite.myport;
+        cSemaphore  = Semaphore.eSemaphore;
+    };
+
+    composite.eREP4 => REP4Body.eREP4;
+};
+
+signature sRepSelector {
+    void  getRep([out]Descriptor(sREP4) *desc, [in]int_t i);
+    void  getNRep([out]int_t *n);
+};
+
+celltype tRepSelector {
+    entry sRepSelector eRepSelector;
+    [ref_desc]
+        call sREP4 cREP[];
+    attr {
+        char *name = C_EXP( "\"$cell_global$\"");
+    };
+};

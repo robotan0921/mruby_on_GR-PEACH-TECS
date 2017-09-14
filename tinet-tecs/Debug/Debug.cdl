@@ -1,0 +1,394 @@
+import_C("net/tecs_net.h");
+
+import("net/tBuffer.cdl");
+import("netinet/tNetworkTimer.cdl");
+
+import("netdev/if_mbed/tIfMbed.cdl");
+import("netdev/if_mbed/tIfMbedAdapter.cdl");
+
+import("net/tEthernet.cdl");
+
+import("netinet/tIPv4.cdl");
+import("netinet/tArp.cdl");
+
+import("netinet/tREP.cdl");
+
+import("netinet/tTCP.cdl");
+import("netinet/tUDP.cdl");
+
+import("netinet/tTCPAPIAdapter.cdl");
+
+import("tApplication.cdl");
+
+cell tKernel Kernel {
+};
+
+/* ネットワークの定義 */
+const T_IN4_ADDR MYIP4ADDRESS = C_EXP("MAKE_IPV4_ADDR(192,168,1,200)");
+const T_IN4_ADDR MYIP4MASK    = C_EXP("MAKE_IPV4_ADDR(255,255,255,0)");
+const T_IN4_ADDR MYIP4GATAWAY = C_EXP("MAKE_IPV4_ADDR(192,168,1,1)");
+
+/* TCPCEPの数 */
+const uint32_t NUM_TCPCEP = 1;
+
+/* UDPCEPの数 */
+const uint32_t NUM_UDPCEP = 1;
+const uint32_t UDPV4ADDR_000 = C_EXP("MAKE_IPV4_ADDR(192,168,1,200)");
+const uint32_t UDPV4ADDR_001 = C_EXP("MAKE_IPV4_ADDR(192,168,1,200)");
+
+const uint16_t UDPPORT_000 = 8931;
+const uint16_t UDPPORT_001 = 10000;
+
+/* アプリケーション層 */
+// cell tApplicationBody ApplicationBody {
+//     cTCPAPI4 = TCPCEP_000.eAPI;
+//     // cUDPAPI4 = UDPCEP_000.eAPI;
+//     cREP4_000 = REP4_000.eREP4;
+//     // cREP4_001 = REP4_001.eREP4;
+//     cRepSelector = RepSelector.eRepSelector;
+// };
+
+// cell tTask ApplicationTask {
+
+//     cTaskBody = ApplicationBody.eTaskBody;
+
+//     attribute = C_EXP("TA_ACT");
+//     priority  = 9;
+//     stackSize = 1024;
+// };
+
+cell tUDPApplicationBody UDPApplicationBody {
+    cUDPAPI4 = UDPCEP_000.eAPI;
+};
+
+cell tTask UDPApplication {
+    cTaskBody = UDPApplicationBody.eTaskBody;
+
+    attribute = C_EXP("TA_ACT");
+    priority  = 10;
+    stackSize = 512;
+};
+
+/* REP (受付け口) */
+cell tREP4 REP4_000 {
+    myaddr = MYIP4ADDRESS;
+    myport = 50000;
+};
+
+cell tRepSelector RepSelector {
+    cREP[] = REP4_000.eREP4;
+};
+
+/* TCPCEP (通信端点) */
+[generate(RepeatCellPlugin, "count = NUM_TCPCEP"),allocator(eCEPInput.input.inputp=NetworkBuffer.eNetworkAlloc)] //TODO: 逆リクワイアが使えないためとりあえず
+cell tTCPCEP4 TCPCEP_000 {
+
+    cRepSelector        = RepSelector.eRepSelector;
+
+    cTCPFunctions       = TCPFunctions.eTCPFunctions;
+    cTCPOutput          = TCPOutputBody.eTCPOutput;
+    cSemaphoreTcppost   = SemaphoreTcppost.eSemaphore;
+    cSemaphoreTcpcep    = SemaphoreTcpcep.eSemaphore;
+
+    sbufSize        = 512;
+    rbufSize        = 512;
+};
+
+/* UDPCEP (通信端点) */
+[generate(RepeatCellPlugin, "count = NUM_UDPCEP"),allocator(eInput.sendData.input=NetworkBuffer.eNetworkAlloc)]//逆リクワイアが使えないためとりあえず
+cell tUDPCEP4 UDPCEP_000 {
+    v4addr           = UDPV4ADDR_000;
+    port             = UDPPORT_000;
+    cSemaphoreAllCEP = SemaphoreUdpcep.eSemaphore;
+    cUDPOutput       = UDPOutput.eOutput;
+};
+
+
+/**
+*   トランスポート層
+*
+**/
+[allocator(eInput.TCPInput.inputp=NetworkBuffer.eNetworkAlloc),generate(RepeatPlugin ,"count = NUM_TCPCEP")] //TODO: 逆リクワイアsendが使えないためとりあえず
+cell tTCPInput TCPInput {
+
+    cCEPInput[0]  = TCPCEP_000.eCEPInput;
+    cIPv4CheckSum = IPv4Functions.eCheckSum;
+    cTCPRespond   = TCPOutputBody.eTCPOutput;
+};
+
+[generate(RepeatPlugin ,"count = NUM_TCPCEP"),allocator(eTCPOutput.output.outputp=NetworkBuffer.eNetworkAlloc,
+                                                        eTCPOutput.respond.outputp=NetworkBuffer.eNetworkAlloc)]
+cell tTCPOutputBody TCPOutputBody {
+    cTCPOutputStart[0] = TCPCEP_000.eTCPOutputStart;
+    cIPv4Output        = IPv4Output.eOutput;
+    cIPv4CheckSum      = IPv4Functions.eCheckSum;
+    cSemaphoreTcppost  = SemaphoreTcppost.eSemaphore;
+    cNetworkTimer      = NetworkTimer.eNetworkTimer[3];
+    cTCPFunctions      = TCPFunctions.eTCPFunctions;
+};
+
+cell tTask TCPTask {
+
+    cTaskBody = TCPOutputBody.eTaskBody;
+
+    attribute = C_EXP("TA_NULL");
+    priority  = 5;
+    stackSize = 1024;
+};
+
+cell tTCPFunctions TCPFunctions {
+};
+
+
+[allocator(eInput.UDPInput.inputp=NetworkBuffer.eNetworkAlloc),generate(RepeatPlugin ,"count = NUM_UDPCEP")]//逆リクワイアsendが使えないためとりあえず
+cell tUDPInput UDPInput {
+    cCEPInput[0] = UDPCEP_000.eInput;
+    cCallback[0] = UDPCEP_000.eCallback;
+    cICMP4Error = ICMP4.eICMP4Error;
+};
+
+cell tUDPOutput UDPOutput {
+    cIPv4Output = IPv4Output.eOutput;
+};
+
+/**
+*   ネットワーク層
+*
+**/
+
+cell tIPv4RoutingTable IPv4RoutingTable {
+
+    cSemaphore    = SemaphoreIPv4Routing.eSemaphore;
+    cNetworkTimer = NetworkTimer.eNetworkTimer[2];
+
+    numStaticEntry   = 3;
+    numRedirectEntry = 1;
+    timeout          = 10;
+    staticRoutingTable = {
+        {0, 0, C_EXP("MYIP4GATAWAY"), 0, C_EXP("IN_RTF_DEFINED")},
+        {C_EXP("MYIP4ADDRESS &MYIP4MASK"), C_EXP("MYIP4MASK"), 0, 0, C_EXP("IN_RTF_DEFINED")},
+        {C_EXP("0xffffffff,0xffffffff,0"), 0, C_EXP("IN_RTF_DEFINED")}
+    };
+};
+
+cell tIPv4Functions IPv4Functions {
+
+    IPv4AddressInit = MYIP4ADDRESS;
+    IPv4MaskInit    = MYIP4MASK;
+    IPv4GatawayInit = MYIP4GATAWAY;
+};
+
+[allocator(eICMP4.input.inputp=NetworkBuffer.eNetworkAlloc,
+           eICMP4Error.error.inputp=NetworkBuffer.eNetworkAlloc)]
+cell tICMP4 ICMP4 {
+
+    cTCPInput      = TCPInput.eInput;
+    cIPv4Reply     = IPv4Output.eOutput;
+    cIPv4Functions = IPv4Functions.eFunctions;
+};
+
+[allocator(eIPv4Input.IPv4Input.inputp=NetworkBuffer.eNetworkAlloc)]
+cell tIPv4Input IPv4Input {
+
+    cFunctions  = IPv4Functions.eFunctions;
+    cICMP4      = ICMP4.eICMP4;
+    cICMP4Error = ICMP4.eICMP4Error;
+    cUDPInput   = UDPInput.eInput;
+    cTCPInput   = TCPInput.eInput;
+};
+
+[allocator(eOutput.IPv4Output.outputp=NetworkBuffer.eNetworkAlloc,
+           eOutput.IPv4Reply.outputp=NetworkBuffer.eNetworkAlloc)]
+cell tIPv4Output IPv4Output {
+
+    cEthernetOutput = EthernetOutput.eEthernetOutput;
+    cFunctions      = IPv4Functions.eFunctions;
+    cRoutingTable   = IPv4RoutingTable.eRoutingTable;
+    cIPv4CheckSum   = IPv4Functions.eCheckSum;
+};
+
+/**
+*   イーサネット層
+*
+**/
+
+[allocator(eArpInput.arpInput.inputp=NetworkBuffer.eNetworkAlloc,
+           eArpOutput.arpResolve.outputp=NetworkBuffer.eNetworkAlloc)]
+cell tArp Arp {
+
+    cEthernetRawOutput = EthernetOutputTaskBody.eRawOutput;
+    cFunctions = IPv4Functions.eFunctions;
+
+    cNetworkTimer = NetworkTimer.eNetworkTimer[1];
+    cArpSemaphore = ArpSemaphore.eSemaphore;
+
+    arpEntry = 10;
+};
+
+cell tTask EthernetInputTask {
+
+    cTaskBody = EthernetInputTaskBody.eTaskBody;
+
+    attribute = C_EXP("TA_HLNG|TA_ACT");
+    priority  = C_EXP("ETHER_INPUT_PRIORITY");
+    stackSize = C_EXP("ETHER_INPUT_STACK_SIZE");
+};
+
+cell tEthernetInputTaskBody EthernetInputTaskBody {
+
+    cTaskNetworkTimer = NetworkTimerTask.eTask;
+    cTaskEthernetOutput = EthernetOutputTask.eTask;
+    cSemaphoreReceive = SemaphoreNicReceive.eSemaphore;
+    cNicDriver = IfMbed.eNicDriver;
+
+    cArpInput = Arp.eArpInput;
+    cIPv4Input = IPv4Input.eIPv4Input;
+};
+
+cell tTask EthernetOutputTask {
+
+    cTaskBody = EthernetOutputTaskBody.eTaskBody;
+
+    attribute = C_EXP("TA_HLNG");
+    priority  = C_EXP("ETHER_OUTPUT_PRIORITY");
+    stackSize = C_EXP("ETHER_OUTPUT_STACK_SIZE");
+};
+
+[allocator(eRawOutput.ethernetRawOutput.outputp=NetworkBuffer.eNetworkAlloc)]
+cell tEthernetOutputTaskBody EthernetOutputTaskBody {
+
+    cNicDriver = IfMbed.eNicDriver;
+    cSemaphoreSend = SemaphoreNicSend.eSemaphore;
+    cSemaphoreTcppost = SemaphoreTcppost.eSemaphore;
+    cDataqueue = DataqueueEthernet.eDataqueue;
+};
+
+[allocator(eEthernetOutput.ethernetOutput.outputp=NetworkBuffer.eNetworkAlloc)]
+cell tEthernetOutput EthernetOutput {
+
+    cNicDriver = IfMbed.eNicDriver;
+    cArpOutput = Arp.eArpOutput;
+    cRawOutput = EthernetOutputTaskBody.eRawOutput;
+};
+
+/**
+*   物理層
+*   tNetworkInterfaceContllor (tIfMbed)
+**/
+
+[allocator(eNicDriver.start.outputp=NetworkBuffer.eNetworkAlloc,
+			eNicDriver.read.inputp=NetworkBuffer.eNetworkAlloc)]
+cell tIfMbed IfMbed {
+
+	ciSemaphoreSend 	= SemaphoreNicSend.eiSemaphore;
+	cSemaphoreReceive 	= SemaphoreNicReceive.eSemaphore;
+	cInterruptRequest 	= NicInterrupt.eInterruptRequest;
+
+    cNetworkTimer = NetworkTimer.eNetworkTimer[0];
+
+    cTask = IfMbedPhyTask.eTask;
+};
+
+cell tTask IfMbedPhyTask {
+
+    cTaskBody = IfMbedPhyTaskBody.eTaskBody;
+
+    attribute = C_EXP("TA_NULL");
+    priority  = C_EXP("IF_MBED_PHY_PRIORITY");
+    stackSize = C_EXP("IF_MBED_PHY_STACK_SIZE");
+};
+
+cell tIfMbedPhyTaskBody IfMbedPhyTaskBody {
+};
+
+
+/*
+*   Adapters
+*/
+cell tTCPAPIAdapter TCPAPIAdapter {
+
+    cTCPAPI4 = TCPCEP_000.eAPI;
+    cREP4_000 = REP4_000.eREP4;
+};
+
+cell tIfMbedAdapter IfMbedAdapter {
+
+	cNicDriver = IfMbed.eNicDriver;
+};
+
+/*
+*   Dataquque, Semaphore etc.
+*/
+cell tSemaphore SemaphoreTcpcep {
+
+    attribute       = C_EXP("TA_TPRI");
+    initialCount    = 1;
+    maxCount        = 1;
+};
+cell tSemaphore SemaphoreTcppost {
+
+    attribute       = C_EXP("TA_TPRI");
+    initialCount    = 0;
+    maxCount        = 1;
+};
+cell tSemaphore SemaphoreUdpcep {
+    attribute       = C_EXP("TA_TPRI");
+    initialCount    = 1;
+    maxCount        = 1;
+};
+cell tSemaphore SemaphoreIPv4Routing {
+
+    attribute       = C_EXP("TA_TPRI");
+    initialCount    = 1;
+    maxCount        = 1;
+};
+cell tSemaphore ArpSemaphore {
+
+    attribute       = C_EXP("TA_TPRI");
+    initialCount    = 1;
+    maxCount        = 1;
+};
+cell tDataqueue DataqueueEthernet{
+
+    attribute                   = C_EXP("TA_NULL");
+    dataCount                   = 1;
+    dataqueueManagementBuffer   = C_EXP("NULL");
+};
+cell tSemaphore SemaphoreNicSend {
+
+    attribute 		= C_EXP("TA_TPRI");
+    initialCount 	= 1;
+    maxCount 		= 1;
+};
+cell tSemaphore SemaphoreNicReceive {
+
+    attribute 		= C_EXP("TA_TPRI");
+    initialCount 	= 0;
+    maxCount 		= 1;
+};
+cell tISRWithInterruptRequest NicInterrupt {
+
+	ciISRBody = IfMbed.eiBody;
+
+	interruptNumber 	= (0x200);
+	interruptAttribute 	= C_EXP("TA_ENAINT");
+	interruptPriority 	= -8;
+};
+
+/**
+*   タイマ組み上げ宣言
+**/
+cell tNetworkTimer NetworkTimer {
+
+    cTCPTask = TCPTask.eTask;
+
+    /* 有効なネットワークタイマ宣言 */
+    cCallTimerFunction[0] = IfMbed.eWatchdogTimer;
+    cCallTimerFunction[1] = Arp.eArpTimer;
+    cCallTimerFunction[2] = IPv4RoutingTable.eRoutingTableTimer;
+    cCallTimerFunction[3] = TCPOutputBody.eCallTimerFunction;
+
+    cSemaphoreNetworkTimer  = SemaphoreNetworkTimer.eSemaphore;
+    ciSemaphoreNetworkTimer = SemaphoreNetworkTimer.eiSemaphore;
+    cSemaphoreCalloutLock   = SemaphoreCalloutLock.eSemaphore;
+};

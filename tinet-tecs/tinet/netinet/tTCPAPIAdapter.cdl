@@ -1,0 +1,8 @@
+[singleton, active]
+celltype tTCPAPIAdapter {
+
+    call sTCPCEPAPI4 cTCPAPI4;
+    // call sUDPCEPAPI4 cUDPAPI4;
+
+    call sREP4 cREP4_000;
+};

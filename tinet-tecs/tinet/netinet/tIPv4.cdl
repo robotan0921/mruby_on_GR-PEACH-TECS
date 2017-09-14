@@ -1,0 +1,121 @@
+import_C("netinet/tecs_in_var.h");
+import_C("netinet/in4.h");
+import_C("netinet/in4_var.h");
+
+signature sUDPInput {
+    uint32_t UDPInput([send(sNetworkAlloc),size_is(size)] int8_t *inputp, [in]int32_t size,
+                      [in,size_is(addrlen)]const int8_t *dstaddr, [in]int32_t addrlen);
+};
+
+signature sTCPInput {
+    uint32_t TCPInput([send(sNetworkAlloc),size_is(size)]int8_t *inputp, [in]int32_t size,
+                      [in,size_is(addrlen)]const int8_t *dstaddr, [in,size_is(addrlen)]const int8_t *srcaddr, [in]int32_t addrlen);
+    void TCPNotify([in,size_is(size)]const int8_t *inputp, [in]int32_t size, [in]ER error);
+};
+
+signature sIPv4Output {
+    ER IPv4Output([send(sNetworkAlloc),size_is(size)]int8_t *outputp, [in]int32_t size, [in]TMO tmout);
+    ER getOffset([inout]T_OFF_BUF *offset);
+    T_IN4_ADDR getIPv4Address(void);
+    void setHeader([inout,size_is(size)]int8_t *outputp, [in]int32_t size, [in]T_IN4_ADDR dstaddr, [in]T_IN4_ADDR srcaddr);
+    ER IPv4Reply([send(sNetworkAlloc),size_is(size)]int8_t *outputp, [in]int32_t size, [in]TMO tmout);
+};
+
+signature sIPv4Reply {
+    ER IPv4Reply([send(sNetworkAlloc),size_is(size)]int8_t *outputp, [in]int32_t size, [in]uint32_t flag, [in]TMO tmout);
+};
+
+signature sICMP4Input {
+    uint32_t input([send(sNetworkAlloc),size_is(size)]int8_t *inputp,[in]int32_t size);
+};
+
+signature sICMP4Error {
+    void error([send(sNetworkAlloc),size_is(size)]int8_t *inputp, [in]int32_t size, [in]uint8_t code);
+};
+
+signature sIPv4Functions {
+    uint16_t checkSum([in,size_is(len)]const int8_t *data, [in]uint32_t len);
+    T_IN4_ADDR getIPv4Address(void);
+    T_IN4_ADDR getIPv4Mask(void);
+};
+
+signature sIPv4CheckSum {
+    uint16_t ipv4CheckSum([inout,size_is(size)]int8_t *data, [in]int32_t size, [in]uint32_t offset, [in]uint8_t proto);
+};
+
+signature sIPv4RoutingTable {
+    T_IN4_ADDR routeAlloc([in]T_IN4_ADDR dst);
+    void redirect([in]T_IN4_ADDR gateway, [in]T_IN4_ADDR target, [in]uint8_t flags, [in]uint32_t tmo);
+};
+
+
+celltype tIPv4Input {
+    [optional]call sUDPInput cUDPInput;
+    [optional]call sTCPInput cTCPInput;
+    [optional]call sICMP4Input cICMP4;
+    [optional]call sICMP4Error cICMP4Error;
+
+    call sIPv4Functions cFunctions;
+
+    entry sIPv4Input eIPv4Input;
+};
+
+celltype tIPv4Output {
+    var {
+        uint16_t fragId = 0;
+    };
+
+    [optional]call sEthernetOutput cEthernetOutput;
+
+    call sIPv4Functions cFunctions;
+    call sIPv4RoutingTable cRoutingTable;
+    call sIPv4CheckSum cIPv4CheckSum;
+
+    entry sIPv4Output eOutput;
+};
+
+celltype tICMP4 {
+    [optional]call sTCPInput cTCPInput;
+
+    call sIPv4Output cIPv4Reply;
+    call sIPv4Functions cIPv4Functions;
+
+    entry sICMP4Input eICMP4;
+    entry sICMP4Error eICMP4Error;
+};
+
+[singleton]
+celltype tIPv4Functions {
+    attr {
+        T_IN4_ADDR IPv4AddressInit;
+        T_IN4_ADDR IPv4MaskInit;
+        T_IN4_ADDR IPv4GatawayInit;
+    };
+    var {
+        T_IN4_ADDR IPv4Address = IPv4AddressInit;
+        T_IN4_ADDR IPv4Mask    = IPv4MaskInit;
+        T_IN4_ADDR IPv4Gataway = IPv4GatawayInit;
+    };
+    entry sIPv4Functions eFunctions;
+    entry sIPv4CheckSum eCheckSum;
+};
+
+[singleton]
+celltype tIPv4RoutingTable {
+    attr {
+        int32_t numStaticEntry   = 3;
+        int32_t numRedirectEntry = 1;
+        int32_t timeout;
+        [size_is(numStaticEntry)]T_IN4_RTENTRY *staticRoutingTable;
+    };
+    var {
+        [size_is(numRedirectEntry)]T_IN4_RTENTRY *routingTable;
+    };
+    require tKernel.eKernel;
+
+    call sNetworkTimer cNetworkTimer;
+    call sSemaphore cSemaphore;
+
+    entry sIPv4RoutingTable eRoutingTable;
+    entry sCallTimerFunction eRoutingTableTimer;
+};

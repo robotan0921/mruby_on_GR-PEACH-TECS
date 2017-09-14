@@ -1,0 +1,187 @@
+import_C("netinet/tecs_udp_var.h");
+
+/*
+ * UDP入力用のシグニチャ
+ */
+signature sUDPCEPInput {
+    ID receiveTaskID(void);
+    ER check([in,size_is(len)]const int8_t *dstaddr, [in]int32_t len, [in]uint16_t dstport);
+    ER sendData([send(sNetworkAlloc),size_is(size)]int8_t *input, [in]int32_t size);
+};
+
+/*
+ * UDPCEPへのコールバック用シグニチャ
+ */
+signature sUDPCallback {
+    void callback([in]FN fncd, [in]ER_UINT error);
+};
+
+
+[singleton]
+celltype tUDPInput {
+    call sUDPCEPInput cCEPInput[];
+    [optional]
+        call sUDPCallback cCallback[];
+    [optional]
+        call sICMP4Error cICMP4Error;
+    [optional]
+        call sIPv4CheckSum cIPv4CheckSum;
+
+    entry sUDPInput eInput;
+};
+
+
+/*
+ * CEPからUDP出力用のシグニチャ
+ */
+signature sUDPOutput {
+    ER UDPOutput([in,size_is(size)]const int8_t *outputp, [in]int32_t size, [in,size_is(addrlen)]const int8_t *dstaddr,
+                 [in,size_is(addrlen)]const int8_t *srcaddr, [in]int32_t addrlen, [in]uint16_t dstport, [in]uint16_t myport, [in]T_OFF_BUF offset, [in]TMO tmout);
+    ER getOffset([inout]T_OFF_BUF *offset);
+};
+
+
+[singleton]
+celltype tUDPOutput {
+    require tKernel.eKernel;
+    [optional]
+        call sIPv4CheckSum cIPv4CheckSum;
+    [optional]
+        call sIPv4Output cIPv4Output;
+
+    entry sUDPOutput eOutput;
+};
+
+
+
+
+/*
+ * UDPAPIv4wrapper用のシグニチャ
+ */
+signature sUDPCEPAPI4 {
+    ER_UINT send([in,size_is(len)]const int8_t *data, [in]int32_t len, [in]T_IN4_ADDR dstaddr,
+                 [in]uint16_t dstport, [in]TMO tmout);
+    ER_UINT receive([out,size_is(len)]int8_t *data, [in]int32_t len, [in]TMO tmout);
+    ER cancelSend([in]ER error);
+    ER cancelReceive([in]ER error);
+};
+
+/*
+ * UDPAPI用のシグニチャ
+ */
+signature sUDPCEPAPI {
+    ER_UINT send([in,size_is(len)]const int8_t *data, [in]int32_t len, [in,size_is(addrlen)]const int8_t *dstaddr,
+                 [in]int32_t addrlen, [in]uint16_t dstport, [in]TMO tmout);
+    ER_UINT receive([out,size_is(len)]int8_t *data, [in]int32_t len, [in]TMO tmout);
+    ER cancelSend([in]ER error);
+    ER celcelReceive([in]ER error);
+};
+
+signature sGetAddress {
+    int8_t* getAddress(void);
+};
+
+celltype tUDPCEPwrapper4 {
+    call sUDPCEPAPI cAPI;
+    //[inline]entry sUDPCEPAPI4 eAPI4;
+    //[inline]entry sGetAddress eGetAddress4;
+    entry sUDPCEPAPI4 eAPI4;
+    entry sGetAddress eGetAddress4;
+
+    attr {
+        T_IN4_ADDR v4addr;
+    };
+
+    var {
+        T_IN4_ADDR addr = v4addr;
+    };
+};
+
+celltype tUDPCEP {
+    require tKernel.eKernel;
+    call sUDPOutput cUDPOutput;
+    call sGetAddress cGetAddress;
+
+    call sDataqueue cDataqueue;
+    call sSemaphore cSemaphore;
+
+    call sSemaphore cSemaphoreAllCEP; //UDPCPE全体で利用しているセマフォ
+
+    [optional]
+        call sTask cCallingSendTask;//mikan動的結合用 dynamic
+    [optional]
+        call sTask cCallingReceiveTask;
+
+    //entry sUDPCEPInput eInput <= tUDPInput.cCEPInput;
+    entry sUDPCEPInput eInput;
+    entry sUDPCEPAPI eAPI;
+    entry sUDPCallback eCallback;
+
+    attr {
+        uint16_t port;
+        int8_t ipLength;
+    };
+
+    var {
+        uint16_t myport = port;
+        T_OFF_BUF offset;
+        uint16_t flags = C_EXP("UDP_CEP_FLG_VALID");
+        ID sendTaskID = C_EXP("TA_NULL");
+        ID receiveTaskID = C_EXP("TA_NULL");
+        T_NET_BUF *cb_netbuf = C_EXP("NULL");	/* コールバック用受信ネットワークバッファ*/
+    };
+};
+
+
+/*
+ * UDPCEPv4複合コンポーネント
+ */
+composite tUDPCEP4 {
+    call sUDPOutput cUDPOutput;
+    call sSemaphore cSemaphoreAllCEP;
+
+    entry sUDPCEPInput eInput;
+    entry sUDPCallback eCallback;
+    entry sUDPCEPAPI4 eAPI;
+
+    attr {
+        T_IN4_ADDR v4addr;
+        uint16_t port;
+    };
+
+    cell tSemaphore Semaphore {
+        attribute    = C_EXP("TA_TPRI");
+        initialCount = 1;
+        maxCount     = 1;
+    };
+
+    cell tDataqueue Dataqueue {
+        attribute = C_EXP("TA_NULL");
+        dataCount = 1;
+        dataqueueManagementBuffer = C_EXP("NULL");
+    };
+
+    cell tUDPCEPwrapper4 UDPCEPwrapper4;
+
+    cell tUDPCEP UDPCEP {
+        ipLength = 4;
+        cUDPOutput => composite.cUDPOutput;
+        cSemaphoreAllCEP =>composite.cSemaphoreAllCEP;
+
+        port = composite.port;
+
+        cGetAddress = UDPCEPwrapper4.eGetAddress4;
+        cSemaphore = Semaphore.eSemaphore;
+        cDataqueue = Dataqueue.eDataqueue;
+    };
+
+    cell tUDPCEPwrapper4 UDPCEPwrapper4 {
+        v4addr = composite.v4addr;
+
+        cAPI = UDPCEP.eAPI;
+    };
+
+    composite.eInput => UDPCEP.eInput;
+    composite.eCallback => UDPCEP.eCallback;
+    composite.eAPI => UDPCEPwrapper4.eAPI4;
+};
