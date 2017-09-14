@@ -50,3 +50,21 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# toppers
+cfg*_out*
+kernel_cfg*
+offset*
+tinet_cfg*
+*.bin
+*.map
+*.srec
+*.syms
+*.timestamp
+
+# Others
+set_env.sh
+cp.sh
+.svn
+*.sublime-project
+*.sublime-workspace
