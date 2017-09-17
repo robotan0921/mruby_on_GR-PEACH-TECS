@@ -32,7 +32,7 @@
  *   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
  *   の責任を負わない．
  *  
- *   $Id: TECSPointer.h 2554 2016-02-27 06:11:34Z okuma-top $ 
+ *   $Id: TECSPointer.h 2637 2017-05-08 10:30:59Z okuma-top $ 
  */
 
 #ifndef TECSPointer_h__
@@ -147,13 +147,13 @@ VALCHECK_MRB_INT( Int8, INT8, int8_t )
 VALCHECK_INT( Int16, INT16, int16_t )
 VALCHECK_MRB_INT( Int16, INT16, int16_t )
 VALCHECK_UINT( UInt8, UINT8, uint8_t )
-#define	VALCHECK_MRB_UInt8
+#define	VALCHECK_MRB_UInt8(mrb,val)
 VALCHECK_UINT( UInt16, UINT16, uint16_t )
-#define	VALCHECK_MRB_UInt16
+#define	VALCHECK_MRB_UInt16(mrb,val)
 VALCHECK_INT( Int32, INT32, int32_t )
-#define VALCHECK_MRB_Int32
+#define VALCHECK_MRB_Int32(mrb,val)
 VALCHECK_UINT( UInt32, UINT32, uint32_t )
-#define VALCHECK_MRB_UInt32
+#define VALCHECK_MRB_UInt32(mrb,val)
 
 VALCHECK_INT( Int64, INT64, int64_t )
 VALCHECK_UINT( UInt64, UINT64, uint64_t )
@@ -162,8 +162,8 @@ VALCHECK_UINT( UInt64, UINT64, uint64_t )
 VALCHECK_MRB_INT( Int64, INT64, int64_t )
 VALCHECK_MRB_UINT( UInt64, UINT64, uint64_t )
 #else
-#define VALCHECK_MRB_Int64      // 範囲チェックが無意味であるため、警告が出るのを回避する
-#define VALCHECK_MRB_UInt64      // 範囲チェックが無意味であるため、警告が出るのを回避する
+#define VALCHECK_MRB_Int64(mrb,val)      // 範囲チェックが無意味であるため、警告が出るのを回避する
+#define VALCHECK_MRB_UInt64(mrb,val)      // 範囲チェックが無意味であるため、警告が出るのを回避する
 #endif
 
 #ifndef TECS_NO_VAL_CHECK

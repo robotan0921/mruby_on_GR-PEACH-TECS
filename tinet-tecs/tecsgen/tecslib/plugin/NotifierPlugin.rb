@@ -57,6 +57,8 @@ class NotifierPlugin < CelltypePlugin
 	# アダプタ関数ハンドルは，次の2個の要素から成る．
 	#  - アダプタ関数へののポインタ
 	#  - アダプタ関数の引数
+	#
+	#   $Id: NotifierPlugin.rb 2640 2017-06-03 11:27:12Z okuma-top $
 
 	# @private
 	class AdapterGenerator

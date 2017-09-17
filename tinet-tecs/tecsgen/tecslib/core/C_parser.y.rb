@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: C_parser.y.rb 2562 2016-03-21 11:48:59Z okuma-top $
+#   $Id: C_parser.y.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 class C_parser
@@ -298,14 +298,16 @@ type_specifier
 
 # mikan K&Rのstruct_or_union_specifierに相当するが、unionは使えない, bit field にも対応しない
 struct_specifier		# mikan
-        : STRUCT struct_tag '{'
+#        : STRUCT struct_tag '{'
+        : struct_term struct_tag '{'
 		{ StructType.set_define( true )  }
 	   struct_declaration_list '}'
 		{
 			StructType.end_of_parse
 			result = val[1]
 		}
-        | STRUCT
+#        | STRUCT
+        | struct_term
 		{
 			result = CStructType.new()
 			StructType.set_define( true )
@@ -315,12 +317,16 @@ struct_specifier		# mikan
 			StructType.end_of_parse
 			result = val[1]
 		}
-        | STRUCT struct_tag   # mikan struct_tag は namespace 対応が必要
+#        | STRUCT struct_tag   # mikan struct_tag は namespace 対応が必要
+        | struct_term struct_tag   # mikan struct_tag は namespace 対応が必要
 		{
 			StructType.set_define( false )
 			StructType.end_of_parse
 			result = val[1]
 		}
+
+struct_term
+        : STRUCT { set_no_type_name true }
 
 struct_declaration_list
         : struct_declaration
@@ -383,9 +389,15 @@ struct_declarator
 
 
 union_specifier
-        : UNION union_tag '{' union_declaration_list '}'
-        | UNION '{' union_declaration_list '}'
-        | UNION union_tag   # mikan struct_tag は namespace 対応が必要
+#        : UNION union_tag '{' union_declaration_list '}'
+#        | UNION '{' union_declaration_list '}'
+#        | UNION union_tag   # mikan struct_tag は namespace 対応が必要
+        : union_term union_tag '{' union_declaration_list '}'
+        | union_term '{' union_declaration_list '}'
+        | union_term union_tag   # mikan struct_tag は namespace 対応が必要
+
+union_term
+        : UNION { set_no_type_name true }
 
 union_declaration_list
         : union_declaration
@@ -922,6 +934,8 @@ end
       if @b_no_type_name == false
         if token[0] == :IDENTIFIER && Namespace.is_typename?( token[1].val ) then
           token[0] = :TYPE_NAME
+          locale = @@current_locale[@@generator_nest]
+#print( "#{locale[0]}: line #{locale[1]} : #{token[0]} '#{token[1].val}: type_name'\n" )
         end
       end
 
@@ -953,6 +967,7 @@ end
 
   @@n_error = 0
   @@n_warning = 0
+  @@n_info = 0
 
   # このメソッドは構文解析、意味解析からのみ呼出し可（コード生成でエラー発生は不適切）
   def self.error( msg )
@@ -973,6 +988,13 @@ end
     Console.puts "warning: #{locale[0]}: line #{locale[1]} #{msg}"
   end
 
+  # このメソッドは構文解析、意味解析からのみ呼出し可
+  def self.info( msg )
+    @@n_info += 1
+    locale = @@current_locale[ @@generator_nest ]
+    Console.puts "info: #{locale[0]}: line #{locale[1]} #{msg}"
+  end
+
   def self.get_n_error
     @@n_error
   end
@@ -986,7 +1008,8 @@ end
   end
 
   def set_no_type_name b_no_type_name
-    # print "b_no_type_name=#{b_no_type_name}\n"
+    locale = @@current_locale[ @@generator_nest ]
+#print "b_no_type_name=#{b_no_type_name} #{locale[0]}: line #{locale[1]}\n"
     @b_no_type_name = b_no_type_name
   end
 

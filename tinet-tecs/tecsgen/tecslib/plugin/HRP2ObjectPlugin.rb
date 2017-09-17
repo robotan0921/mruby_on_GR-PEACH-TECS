@@ -34,6 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
+#   $Id: HRP2ObjectPlugin.rb 2640 2017-06-03 11:27:12Z okuma-top $
 #++
 
 #require "HRP2KernelObjectPlugin"

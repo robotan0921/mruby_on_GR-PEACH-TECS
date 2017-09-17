@@ -3,7 +3,7 @@
 #  TECS Generator
 #      Generator for TOPPERS Embedded Component System
 #  
-#   Copyright (C) 2008-2016 by TOPPERS Project
+#   Copyright (C) 2008-2017 by TOPPERS Project
 #--
 #   上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
 #   ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: componentobj.rb 2626 2017-02-05 11:49:44Z okuma-top $
+#   $Id: componentobj.rb 2638 2017-05-29 14:05:52Z okuma-top $
 #++
 
 # STAGE:
@@ -79,6 +79,9 @@ class Signature < NSBDNode  # < Nestable
 #  @b_checked_as_allocator_signature:: bool:  アロケータシグニチャとしてチェック済み
 #  @b_empty:: Bool: 空(関数が一つもない状態)
 #  @descriptor_list:: nil | { Signature => ParamDecl }  最後の ParamDecl しか記憶しないことに注意
+#  @generate:: [ Symbol, String, Plugin ]  = [ PluginName, option, Plugin ] Plugin は生成後に追加される
+
+  include PluginModule
 
   @@nest_stack_index = -1
   @@nest_stack = []
@@ -124,6 +127,7 @@ class Signature < NSBDNode  # < Nestable
     @b_empty = false
     @b_checked_as_allocator_signature = false
     @descriptor_list = nil
+    @generate = nil
     @@current_object = self
     set_specifier_list( Generator.get_statement_specifier )
   end
@@ -144,8 +148,14 @@ class Signature < NSBDNode  # < Nestable
       @b_empty = true
     end
 
-    @@current_object = nil
     set_descriptor_list
+
+    if @generate then
+      signature_plugin
+    end
+
+    @@current_object = nil
+
     return self
   end
 
@@ -173,6 +183,11 @@ class Signature < NSBDNode  # < Nestable
         end
       when :DEVIATE
         @b_deviate = true
+      when :GENERATE
+        if @generate then
+          cdl_error( "S9999 generate specifier duplicate"  )
+        end
+        @generate = [ s[1], s[2] ] # [ PluginName, "option" ]
       else
         cdl_error( "S1002 \'$1\': unknown specifier for signature" , s[0] )
       end
@@ -312,6 +327,36 @@ class Signature < NSBDNode  # < Nestable
     return false
   end
 
+  #=== Signature# シグニチャプラグイン (generate 指定子)
+  def signature_plugin
+    plugin_name = @generate[0]
+    option = @generate[1]
+    apply_plugin( plugin_name, option )
+  end
+
+  #== Signature#apply_plugin
+  def apply_plugin plugin_name, option
+    if is_empty? then
+      cdl_warning( "S9999 $1 is empty. cannot apply signature plugin. ignored" , @name )
+      return
+    end
+
+    plClass = load_plugin( plugin_name, SignaturePlugin )
+    return if plClass == nil
+    if $verbose then
+      print "new through: plugin_object = #{plClass.class.name}.new( #{@name}, #{option} )\n"
+    end
+
+    begin
+      plugin_object = plClass.new( self, option )
+      plugin_object.set_locale @locale
+    rescue Exception => evar
+      cdl_error( "S1150 $1: fail to new" , plugin_name )
+      print_exception( evar )
+    end
+    generate_and_parse plugin_object
+end
+
   #== Signature# 引数で参照されている Descriptor 型のリストを
   #RETURN:: Hash { Signature => ParamDecl }:  複数の ParamDecl から参照されている場合、最後のものしか返さない
   def get_descriptor_list
@@ -342,7 +387,7 @@ class Signature < NSBDNode  # < Nestable
               desc_list[ t.get_signature ] = param
               # p self.get_name, t.get_signature.get_name
               if t.get_signature == self then
-                cdl_error( "S9999 Descriptor argument '$1' is the same signature as this parameter '$2' included", @name, param.get_name )
+               # cdl_error( "S9999 Descriptor argument '$1' is the same signature as this parameter '$2' included", @name, param.get_name )
               end
               dir = param.get_direction
               if dir != :IN && dir != :OUT && dir != :INOUT then
@@ -415,6 +460,72 @@ class Signature < NSBDNode  # < Nestable
 
 end
 
+module CelltypePluginModule
+  #=== Celltype# セルタイププラグイン (generate 指定子)
+  def celltype_plugin
+    plugin_name = @generate[0]
+    option = @generate[1]
+    @generate[2] = apply_plugin( plugin_name, option )
+  end
+
+  #=== Celltype# セルタイププラグインをこのセルタイプに適用
+  def apply_plugin( plugin_name, option )
+
+    # plClass = load_plugin( plugin_name, CelltypePlugin )
+    if kind_of? Celltype then
+      plugin_class = CelltypePlugin
+    elsif kind_of? CompositeCelltype then
+      plugin_class = CompositePlugin
+    else
+      raise "unknown class #{self.class.name}"
+    end
+    
+    plClass = load_plugin( plugin_name, plugin_class )
+    return if plClass == nil
+    if $verbose then
+      print "new celltype plugin: plugin_object = #{plClass.class.name}.new( #{@name}, #{option} )\n"
+    end
+
+    begin
+      plugin_object = plClass.new( self, option )
+      @generate_list << [ plugin_name, option, plugin_object ]
+      plugin_object.set_locale @locale
+      generate_and_parse plugin_object
+    rescue Exception => evar
+      cdl_error( "S1023 $1: fail to new" , plugin_name )
+      print_exception( evar )
+    end
+
+    # 既に存在するセルに new_cell を適用
+    @cell_list.each{ |cell|
+      apply_plugin_cell plugin_object, cell
+    }
+
+    return plugin_object
+  end
+
+  def apply_plugin_cell plugin, cell
+    begin
+      plugin.new_cell cell
+    rescue Exception => evar
+      cdl_error( "S1037 $1: celltype plugin fail to new_cell" , plugin.class.name )
+      print_exception( evar )
+    end
+  end
+
+  def celltype_plugin_new_cell cell
+    @generate_list.each{ |generate|
+      celltype_plugin = generate[2]
+      begin
+        celltype_plugin.new_cell cell
+      rescue Exception => evar
+        cdl_error( "S1037 $1: celltype plugin fail to new_cell" , celltype_plugin.class.name )
+        print_exception( evar )
+      end
+    }
+  end
+end #CelltypePluginModule
+
 class Celltype < NSBDNode # < Nestable
 # @name:: Symbol
 # @global_name:: Symbol
@@ -432,6 +543,7 @@ class Celltype < NSBDNode # < Nestable
 # @active:: bool
 # @b_reuse:: bool :  reuse 指定されて import された(template 不要)
 # @generate:: [ Symbol, String, Plugin ]  = [ PluginName, option, Plugin ] Plugin は生成後に追加される
+# @generate_list:: [ [ Symbol, String, Plugin ], ... ]   generate 文で追加された generate
 #
 # @n_attribute_ro:: int >= 0    none specified
 # @n_attribute_rw:: int >= 0    # of [rw] specified attributes (obsolete)
@@ -462,7 +574,8 @@ class Celltype < NSBDNode # < Nestable
 #                                               ルートリージョンはドメイン名が　nil
 
   include PluginModule
-
+  include CelltypePluginModule
+  
   @@nest_stack_index = -1
   @@nest_stack = []
   @@current_object = nil
@@ -503,6 +616,7 @@ class Celltype < NSBDNode # < Nestable
     @singleton = false
     @active = false
     @generate = nil
+    @generate_list = []
 
     @n_attribute_ro = 0
     @n_attribute_rw = 0
@@ -884,32 +998,6 @@ class Celltype < NSBDNode # < Nestable
 
   end
 
-  #=== Celltype# セルタイププラグイン (generate 指定子)
-  def celltype_plugin
-
-    load_plugin( @generate[0], CelltypePlugin )
-
-    plugin_name = @generate[0]
-    option = @generate[1]
-    plugin_object = nil
-    eval_str = "plugin_object = #{plugin_name}.new( self, option )"
-    if $verbose then
-      print "new celltype : #{eval_str}\n"
-    end
-
-    begin
-      eval( eval_str )     # plugin を生成
-      plugin_object.set_locale @locale
-      @generate[ 2 ] = plugin_object
-      generate_and_parse plugin_object
-    rescue Exception => evar
-      cdl_error( "S1023 $1: fail to new" , plugin_name )
-      print "eval( #{eval_str} )\n"
-
-      print_exception( evar )
-    end
-  end
-
   #=== Celltype#dynamic の適合性チェック
   def check_dynamic_join
     @port.each{ |port|
@@ -1024,6 +1112,7 @@ class Celltype < NSBDNode # < Nestable
   # セルの構文解釈の最後でこのメソドを呼出される．
   # シングルトンセルが同じ linkunit に複数ないかチェック
   def new_cell( cell )
+    dbgPrint "Celltype#new_cell( #{cell.get_name} )\n"
     # Celltype では Cell の set_owner しない
     # シングルトンで、プロトタイプ宣言でない場合、コード生成対象リージョンの場合
     if @singleton  then
@@ -1034,9 +1123,14 @@ class Celltype < NSBDNode # < Nestable
       }
     end
     @cell_list << cell
+
+    # プラグインにより生成されたセルタイプか ?
     if @plugin then
       @plugin.new_cell cell
     end
+
+    # セルタイププラグインの適用
+    celltype_plugin_new_cell cell
   end
 
   #=== Celltype# セルタイプは INIB を持つか？
@@ -1389,7 +1483,7 @@ class Cell < NSBDNode # < Nestable
     if @in_composite then
       cell_prev = CompositeCelltype.find( name )
       if cell_prev == nil then
-        CompositeCelltype.new_cell( self )
+        CompositeCelltype.new_cell_in_composite( self )
       end
     else
       # cell_prev = Namespace.find( [ name ] )   # 親まで捜しにいく
@@ -1724,9 +1818,9 @@ class Cell < NSBDNode # < Nestable
     end
 
     if ! @in_composite then
-      if @celltype.instance_of? Celltype then
+      # if @celltype.instance_of? Celltype then
         @celltype.new_cell self
-      end
+      # end
       @@cell_list << self
     end
   end
@@ -1845,30 +1939,33 @@ class Cell < NSBDNode # < Nestable
     end
   end
 
-  #=== Cell# セルタイププラグイン (generate 指定子)
+  #=== Cell# セルプラグイン (generate 指定子)
   def cell_plugin
-
-    load_plugin( @generate[0], CellPlugin )
-
     plugin_name = @generate[0]
     option = @generate[1]
-    plugin_object = nil
-    eval_str = "plugin_object = #{plugin_name}.new( self, option )"
+    @generate[2] = apply_plugin plugin_name, option
+  end
+
+  def apply_plugin plugin_name, option
+    if ! @b_defined then
+      cdl_error( "S9999 plugin cannot apply to prototype cell '$1'", @name )
+    end
+
+    plClass = load_plugin( plugin_name, CellPlugin )
+    # return if plClass == nil # 従来と仕様が変わるので、継続する
     if $verbose then
-      print "new cell : #{eval_str}\n"
+      print "new cell plugin: plugin_object = #{plClass.class.name}.new( #{@name}, #{option} )\n"
     end
 
     begin
-      eval( eval_str )     # plugin を生成
+      plugin_object = plClass.new( self, option )
       plugin_object.set_locale @locale
-      @generate[ 2 ] = plugin_object
       generate_and_parse plugin_object
     rescue Exception => evar
       cdl_error( "S1166 $1: fail to new", plugin_name )
-      print "eval( #{eval_str} )\n"
-
       print_exception( evar )
     end
+    return  plugin_object
   end
 
   def add_compositecelltypejoin join
@@ -2832,17 +2929,6 @@ class Cell < NSBDNode # < Nestable
       # compoiste セル展開中の composite は展開しない (CompositeCelltype::expand 内で再帰的に expnad)
       expand
     end
-
-    # celltype に generate が指定されされているか
-    celltype_plugin = @celltype.get_celltype_plugin
-    if celltype_plugin then
-      begin
-        celltype_plugin.new_cell self
-      rescue Exception => evar
-        cdl_error( "S1037 $1: celltype plugin fail to new_cell" , celltype_plugin.class.name )
-        print_exception( evar )
-      end
-    end
   end
 
   #=== Cell# composite セルの展開
@@ -3006,7 +3092,8 @@ end
 class CompositeCelltype < NSBDNode # < Nestable
 # @name:: str
 # @global_name:: str
-# @cell_list:: NamedList   Cell
+# @cell_list_in_composite:: NamedList   Cell
+# @cell_list::Array :: [ Cell ] : cell of CompositeCelltype's cell
 # @export_name_list:: NamedList : CompositeCelltypeJoin
 # @port_list:: CompositeCelltypeJoin[]
 # @attr_list:: CompositeCelltypeJoin[]
@@ -3016,10 +3103,15 @@ class CompositeCelltype < NSBDNode # < Nestable
 # @real_active:: bool : has active cell in this composite celltype
 # @name_list:: NamedList item: Decl (attribute), Port エクスポート定義
 # @internal_allocator_list:: [ [cell, internal_cp_name, port_name, func_name, param_name, ext_alloc_ent], ... ]
+# @generate:: [ Symbol, String, Plugin ]  = [ PluginName, option, Plugin ] Plugin は生成後に追加される
+# @generate_list:: [ [ Symbol, String, Plugin ], ... ]   generate 文で追加された generate
 
   @@nest_stack_index = -1
   @@nest_stack = []
   @@current_object = nil
+
+  include CelltypePluginModule
+  include PluginModule
 
   def self.push
     @@nest_stack_index += 1
@@ -3038,7 +3130,8 @@ class CompositeCelltype < NSBDNode # < Nestable
   def initialize( name )
     super()
     @name = name
-    @cell_list = NamedList.new( nil, "in composite celltype #{name}" )
+    @cell_list_in_composite = NamedList.new( nil, "in composite celltype #{name}" )
+    @cell_list = []
     @export_name_list = NamedList.new( nil, "export in composite celltype #{name}" )
     @name_list = NamedList.new( nil, "in composite celltype #{name}" )
     @@current_object = self
@@ -3059,6 +3152,7 @@ class CompositeCelltype < NSBDNode # < Nestable
     @port_list = []
     @attr_list = []
     @internal_allocator_list = []
+    @generate_list = []
     set_specifier_list( Generator.get_statement_specifier )
   end
 
@@ -3069,7 +3163,6 @@ class CompositeCelltype < NSBDNode # < Nestable
 
   # CompositeCelltype#end_of_parse
   def end_of_parse
-
     # singleton に関するチェック
     if @b_singleton && @real_singleton == nil then
       cdl_warning( "W1004 $1 : specified singleton but has no singleton in this celltype" , @name )
@@ -3110,7 +3203,7 @@ class CompositeCelltype < NSBDNode # < Nestable
     # mikan relay が正しく抜けているかチェックされていない
 
     # callback 結合
-    @cell_list.get_items.each{ |c|
+    @cell_list_in_composite.get_items.each{ |c|
       ct = c.get_celltype
       if ct then
         c.create_reverse_join
@@ -3118,12 +3211,12 @@ class CompositeCelltype < NSBDNode # < Nestable
     }
 
     # 意味解析
-    @cell_list.get_items.each{ |c|
+    @cell_list_in_composite.get_items.each{ |c|
       c.set_definition_join
     }
 
     # cell の未結合の呼び口がないかチェック
-    @cell_list.get_items.each{ |c|
+    @cell_list_in_composite.get_items.each{ |c|
       c.check_join
       c.check_reverse_require
     }
@@ -3161,17 +3254,22 @@ class CompositeCelltype < NSBDNode # < Nestable
         end
       }
     }
+
+    # composite プラグイン
+    if @generate then
+      celltype_plugin
+    end
   end
 
- ### cell (CompositeCelltype)
-  def self.new_cell( cell )
-    @@current_object.new_cell( cell )
+ ### CompositeCelltype#new_cell_in_composite
+  def self.new_cell_in_composite( cell )
+    @@current_object.new_cell_in_composite( cell )
 
   end
 
-  def new_cell( cell )
+  def new_cell_in_composite( cell )
     cell.set_owner self  # Cell (in_omposite)
-    @cell_list.add_item( cell )
+    @cell_list_in_composite.add_item( cell )
     if cell.get_celltype then    # nil ならば、すでにセルタイプなしエラー
       if cell.get_celltype.is_singleton? then
         @real_singleton = cell
@@ -3188,6 +3286,14 @@ class CompositeCelltype < NSBDNode # < Nestable
     @@current_object.new_join( export_name, internal_cell_name,
 					 internal_cell_elem_name, type )
     
+  end
+
+ ### CompositeCelltype#new_cell
+  def new_cell cell
+    @cell_list << cell
+
+    # セルタイププラグインの適用
+    celltype_plugin_new_cell cell
   end
 
   #=== CompositeCelltype# CompositeCelltypeJoin を作成
@@ -3207,7 +3313,7 @@ class CompositeCelltype < NSBDNode # < Nestable
 
     dbgPrint "new_join: #{export_name} #{internal_cell_name} #{internal_cell_elem_name}\n"
 
-    cell = @cell_list.get_item( internal_cell_name )
+    cell = @cell_list_in_composite.get_item( internal_cell_name )
     if cell == nil then
       cdl_error( "S1057 $1 not found in $2" , internal_cell_name, @name )
       return
@@ -3453,7 +3559,7 @@ class CompositeCelltype < NSBDNode # < Nestable
 
   def find name
     dbgPrint "CompositeCelltype: find in composite: #{name}\n"
-    cell = @cell_list.get_item( name )
+    cell = @cell_list_in_composite.get_item( name )
     return cell if cell
 
     dbgPrint "CompositeCelltype: #{name}, #{@name_list.get_item( name )}\n"
@@ -3497,7 +3603,7 @@ class CompositeCelltype < NSBDNode # < Nestable
     clone_cell_list3 = {}
 
     #  composite 内部のすべての cell について
-    @cell_list.get_items.each { |c|
+    @cell_list_in_composite.get_items.each { |c|
 
       # debug
       dbgPrint "expand : cell #{c.get_name}\n"
@@ -3587,6 +3693,11 @@ class CompositeCelltype < NSBDNode # < Nestable
         cdl_warning( "W1005 $1 : idx_is_id is ineffective for composite celltype" , @name )
       when :ACTIVE
         @b_active = true
+      when :GENERATE
+        if @generate then
+          cdl_error( "S9999 generate specifier duplicate"  )
+        end
+        @generate = [ s[1], s[2] ] # [ PluginName, "option" ]
       else
         cdl_error( "S1071 $1 cannot be specified for composite" , s[0] )
       end
@@ -3633,7 +3744,7 @@ class CompositeCelltype < NSBDNode # < Nestable
   # （内部のセルが active または factory を持っている）
   def is_inactive?
     if @b_active == false then
-      @cell_list.get_items.each{ |c|
+      @cell_list_in_composite.get_items.each{ |c|
         if c.get_celltype && c.get_celltype.is_inactive? == false then
           # c.get_celltype == nil の場合はセルタイプ未定義ですでにエラー
           return false
@@ -3654,7 +3765,7 @@ class CompositeCelltype < NSBDNode # < Nestable
     puts "CompositeCelltype: name: #{@name}"
     (indent+1).times { print "  " }
     puts "active: #{@b_active}, singleton: #{@b_singleton}"
-    @cell_list.show_tree( indent + 1 )
+    @cell_list_in_composite.show_tree( indent + 1 )
     (indent+1).times { print "  " }
     puts "name_list"
     @name_list.show_tree( indent + 2 )
@@ -3806,6 +3917,7 @@ class Port < BDNode
     @b_has_name = false
     @b_inline = false
     @b_optional = false
+    @b_omit = false
     @b_ref_desc = false
     @b_dynamic = false
     reset_optimize
@@ -3989,7 +4101,7 @@ end
       elsif @signature && @signature.is_empty? then
         cdl_error( "S9999 $1 cannot be specified for empty signature", dyn_ref  )
       elsif @signature && @signature.has_descriptor? then
-        cdl_error( "S9999 $1 port '$2' cannot have Descriptor in its signature", dyn_ref, @name )
+        # cdl_error( "S9999 $1 port '$2' cannot have Descriptor in its signature", dyn_ref, @name )
       end
 
     elsif @b_dynamic && @b_ref_desc then
@@ -5528,8 +5640,9 @@ class Join < BDNode
       end
 
       if rp == nil then
-        if( load_plugin( plugin_name, ThroughPlugin ) ) then
-          gen_through_cell_code_and_parse( plugin_name, i, next_cell, next_port_name )
+        plClass = load_plugin( plugin_name, ThroughPlugin )
+        if( plClass ) then
+          gen_through_cell_code_and_parse( plugin_name, i, next_cell, next_port_name, plClass )
         end
       else
         # 見つかったものを共用する
@@ -5576,7 +5689,7 @@ class Join < BDNode
   end
 
   #=== Join# through プラグインを呼び出して CDL 生成させるとともに、import する
-  def gen_through_cell_code_and_parse( plugin_name, i, next_cell, next_port_name )
+  def gen_through_cell_code_and_parse( plugin_name, i, next_cell, next_port_name, plClass )
 
     through = @through_list[ i ]
     plugin_name           = through[ 0 ]
@@ -5600,25 +5713,16 @@ class Join < BDNode
       @@region_count      = 0
     end
     @@plugin_creating_join = self
-
     caller_cell = @owner
 
-    plugin_object = nil
-    eval_str = "plugin_object = #{plugin_name}.new( '#{generating_cell_name}'.to_sym, plugin_arg.to_s, next_cell, '#{next_port_name}'.to_sym, @definition.get_signature, @celltype, caller_cell )"
-    if $verbose then
-      print "new through: #{eval_str}\n"
-    end
-
     begin
-      eval( eval_str )     # plugin を生成
+      plugin_object = plClass.new( "#{generating_cell_name}".to_sym, plugin_arg.to_s, next_cell, "#{next_port_name}".to_sym, @definition.get_signature, @celltype, caller_cell )
       plugin_object.set_locale @locale
     rescue Exception => evar
       cdl_error( "S1126 $1: fail to new" , plugin_name )
       if @celltype && @definition.get_signature && caller_cell && next_cell then
         print "signature: #{@definition.get_signature.get_name} from: #{caller_cell.get_name} to: #{next_cell.get_name} of celltype: #{@celltype.get_name}\n"
       end
-      print "eval( #{eval_str} )\n"
-
       print_exception( evar )
       return 
     end
@@ -6484,7 +6588,7 @@ class DomainType < Node
     super()
     @name = name
     @plugin_name = (name.to_s + "Plugin").to_sym
-    load_plugin( @plugin_name, DomainPlugin )
+    plClass = load_plugin( @plugin_name, DomainPlugin )
     @region = region
     @option = option
 
@@ -6500,6 +6604,7 @@ class DomainType < Node
   def create_domain_plugin
     if ! @plugin then
       pluginClass = Object.const_get @plugin_name
+      return if pluginClass == nil
       @plugin = pluginClass.new( @region, @name, @option )
     end
   end
@@ -7258,6 +7363,8 @@ class Import_C < Node
  * these extension can be eliminated also by spefcifying option
  * --no-gcc-extension-support for tecsgen.
  */
+#ifdef __GNUC__
+
 #ifndef __attribute__
 #define __attribute__(x)
 #endif
@@ -7274,6 +7381,11 @@ class Import_C < Node
 #define __asm__(x)
 #endif
 
+#ifndef restrict
+#define restrict
+#endif
+
+#endif /* ifdef __GNUC__ */
 #endif /* TECS_NO_GCC_EXTENSION_SUPPORT */
 EOT
     end
@@ -7418,48 +7530,39 @@ class Import < Node
   end
 end
 
-#== generate: signature プラグインのロードと実行
+#== generate: signature, celltype, cell へのプラグインのロードと適用
 class Generate < Node
 #@plugin_name:: Symbol
-#@signature_nsp:: NamespacePath
+#@object_nsp:: NamespacePath
 #@option::         String '"', '"' で囲まれている
+#@plugin_object:: Plugin
 
   include PluginModule
 
-  def initialize( plugin_name, signature_nsp, option )
+  def initialize( plugin_name, object_nsp, option )
     super()
     @plugin_name = plugin_name
-    @signature_nsp = signature_nsp
+    @object_nsp = object_nsp
     option = option.to_s    # option は Token
     @option = option
+    @plugin_object = nil
 
-    signature = Namespace.find( signature_nsp ) #mikan Namespace   #1
-    if ! signature.instance_of? Signature then
-      cdl_error( "S1149 $1 not signature" , signature_nsp )
+    dbgPrint "generate: #{plugin_name} #{object_nsp.to_s} option=#{option}\n"
+
+    object = Namespace.find( object_nsp )
+    if object.kind_of?( Signature ) ||
+       object.kind_of?( Celltype ) ||
+       object.kind_of?( CompositeCelltype ) ||
+       object.kind_of?( Cell )then
+      @plugin_object = object.apply_plugin( @plugin_name, @option )
+    elsif object then
+      # V1.5.0 以前の仕様では、signature のみ可能だった
+#      cdl_error( "S1149 $1 not signature" , signature_nsp )
+      cdl_error( "S9999 generate: '$1' neither signature, celltype nor cell", object_nsp )
       return
-    elsif signature.is_empty? then
-      cdl_warning( "S9999 $1 is empty. cannot apply signature plugin. ignored" , signature_nsp )
-      return
+    else
+      cdl_error( "S9999 generate: '$1' not found", object_nsp )
     end
-
-    load_plugin( plugin_name, SignaturePlugin )
-
-    plugin_object = nil
-    eval_str = "plugin_object = #{plugin_name}.new( signature, option )"
-    if $verbose then
-      print "new through: #{eval_str}\n"
-    end
-
-    begin
-      eval( eval_str )     # plugin を生成
-      plugin_object.set_locale @locale
-    rescue Exception => evar
-      cdl_error( "S1150 $1: fail to new" , plugin_name )
-      print "eval( #{eval_str} )\n"
-
-      print_exception( evar )
-    end
-    generate_and_parse plugin_object
   end
 end
 

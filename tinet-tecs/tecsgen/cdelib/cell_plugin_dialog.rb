@@ -49,7 +49,7 @@ Copyright (C) 2014-2015 by TOPPERS Project
  TOPPERS PROJECT BE LIABLE FOR ANY TYPE OF DAMAGE DIRECTLY OR
  INDIRECTLY CAUSED FROM THE USE OF THIS SOFTWARE.
 
- $Id: tcontrol.rb 2197 2015-03-08 01:55:10Z okuma-top $
+ $Id: cell_plugin_dialog.rb 2640 2017-06-03 11:27:12Z okuma-top $
 
 =end
 

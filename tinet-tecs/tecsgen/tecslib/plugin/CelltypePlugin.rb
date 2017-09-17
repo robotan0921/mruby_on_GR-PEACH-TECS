@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: CelltypePlugin.rb 2061 2014-05-31 22:15:33Z okuma-top $
+#   $Id: CelltypePlugin.rb 2638 2017-05-29 14:05:52Z okuma-top $
 #++
 
 #== celltype プラグインの共通の親クラス

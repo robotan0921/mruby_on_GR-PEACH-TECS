@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: types.rb 2587 2016-07-31 13:26:28Z okuma-top $
+#   $Id: types.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 #= HasType: @type を内部に持つ型のためのモジュール
@@ -733,6 +733,7 @@ class StructType < Type
 #  @b_has_pointer_member:: bool : メンバにポインタ型がある
 #  @b_has_sized_pointer_member:: bool : メンバにポインタ型がある
 #  @b_has_unsized_string_member:: bool : メンバにポインタ型がある
+#  @b_hasTag:: bool : タグがある
 #  @member_types_symbol:: Symbol : tag が無い時のみ設定 (それ以外では nil)
 
   @@structtype_current_stack = []
@@ -745,6 +746,11 @@ class StructType < Type
   def initialize( tag = nil )
     super()
     @tag = tag
+    if tag then
+      @b_hasTag = true
+    else
+      @b_hasTag = false
+    end
     @@structtype_current_sp += 1
     @@structtype_current_stack[@@structtype_current_sp] = self
     @b_has_pointer_member = false
@@ -917,16 +923,16 @@ class StructType < Type
   def get_type_str      # mikan struct get_type_str
     str = super
 
-    if @tag then
+    if @b_hasTag then
       # typedef struct tag StructType; の形式の場合
       # struct の本体は、別に生成される
-      return "#{str}struct #{@tag} "
+      return "#{str}struct #{@tag}"
 
     else
       # typedef struct { int a; } StructType; の形式の場合
-      str += "struct {\n"
+      str += "struct {"
       @members_decl.get_items.each{ |i|
-        str += sprintf( "    %-8s %s%s;\n", "#{i.get_type.get_type_str}", "#{i.get_name}", "#{i.get_type.get_type_str_post}" )
+        str += sprintf( "%s %s%s;", "#{i.get_type.get_type_str}", "#{i.get_name}", "#{i.get_type.get_type_str_post}" )
       }
       str += "} "
 
@@ -1266,6 +1272,15 @@ class ArrayType < Type
 
   def check_init( locale, ident, initializer, kind, attribute = nil )
     if ( initializer.instance_of?( Array ) ) then
+      # 要素数が指定されている場合、初期化要素数をチェック
+      if @subscript then
+        n_sub = @subscript.eval_const( nil )
+        if n_sub then
+          if initializer.length > n_sub then
+            cdl_error2( locale, "T9999 $1: too many initializer, $2 for $3" , ident, initializer.length, n_sub )
+          end
+        end
+      end
       index = 0
       initializer.each{ |i|
         @type.check_init( locale, "#{ident}[#{index}]", i, kind, attribute = nil )
@@ -1545,19 +1560,21 @@ class DescriptorType < Type
 # @sinagure_nsp::NamespacePath
 
   def initialize( signature_nsp )
-    @signature_nsp = signature_nsp
+    # p "Desc #{signature_nsp.to_s}"
     obj = Namespace.find signature_nsp
     if ! obj.kind_of? Signature then
       cdl_error( "T9999 '$1': not signature or not found", signature_nsp.to_s )
+      @signature_nsp = signature_nsp
     else
       if obj.has_descriptor? then
-        cdl_error( "T9999 '$1': has Desicrptor in function parameter", signature_nsp.to_s )
+       # cdl_error( "T9999 '$1': has Descriptor in function parameter", signature_nsp.to_s )
       end
+      @signature_nsp = obj.get_namespace_path
     end
   end
 
   def get_type_str
-    "Descriptor( #{@signature_nsp.to_s} )"
+    "Descriptor( #{@signature_nsp.get_global_name} )"
   end
 
   def get_type_str_post

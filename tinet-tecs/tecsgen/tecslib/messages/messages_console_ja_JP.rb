@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: messages_console_ja_JP.rb 2061 2014-05-31 22:15:33Z okuma-top $
+#   $Id: messages_console_ja_JP.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 
@@ -1166,5 +1166,9 @@ class TECSMsg
 
 # W6004 need 'void' for no parameter"
 @@warning_message[ :"W6004" ] = "パラメータが存在しない場合 'void' が必要です"
+
+###
+# info メッセージ
+@@info_message = {}
 
 end

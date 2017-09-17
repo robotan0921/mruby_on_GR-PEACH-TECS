@@ -3,7 +3,7 @@
 #  TECS Generator
 #      Generator for TOPPERS Embedded Component System
 #  
-#   Copyright (C) 2008-2016 by TOPPERS Project
+#   Copyright (C) 2008-2017 by TOPPERS Project
 #--
 #   上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
 #   ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: generate.rb 2626 2017-02-05 11:49:44Z okuma-top $
+#   $Id: generate.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 def ifdef_macro_only f
@@ -762,6 +762,24 @@ EOT
     }
   end
 
+  #=== Namespace#すべてのシグニチャをたどる
+  def travers_all_signature # ブロック引数 { |signature|  }
+    proc = Proc.new    # このメソッドのブロック引数
+    @signature_list.each{ |sig|
+      proc.call sig
+    }
+    @namespace_list.each{ |ns|
+      ns.travers_all_signature_proc proc
+    }
+  end
+  def travers_all_signature_proc proc
+    @signature_list.each{ |sig|
+      proc.call sig
+    }
+    @namespace_list.each{ |ns|
+      ns.travers_all_signature_proc proc
+    }
+  end
 end
 
 class Typedef
@@ -854,7 +872,14 @@ EOT
     if dl.length > 0 then
       f.printf TECSMsg.get(:SDI_comment), "#_SDI_#"
       dl.each{ |dt,param|
-        f.print "#include \"#{dt.get_global_name}_tecsgen.#{$h_suffix}\"\n"
+        f.print <<EOT
+/* pre-typedef incomplete-type to avoid error in case of mutual or cyclic reference */
+#ifndef Descriptor_of_#{dt.get_global_name}_Defined
+#define  Descriptor_of_#{dt.get_global_name}_Defined
+typedef struct { struct tag_#{dt.get_global_name}_VDES *vdes; } Descriptor( #{dt.get_global_name} );
+#endif
+EOT
+#        f.print "#include \"#{dt.get_global_name}_tecsgen.#{$h_suffix}\"\n"
       }
       f.print "\n"
     end
@@ -904,10 +929,14 @@ EOT
       f.print( "    void   (*dummy__)(void);\n" )
     end
 
-    f.print "};\n"
-    f.printf "\n"
+    f.print "};\n\n"
     f.printf TECSMsg.get(:SDES_comment), "#_SDES_#"
-    f.print( "typedef struct { struct tag_#{@global_name}_VDES *vdes; } Descriptor( #{@global_name} );\n" )
+    f.print <<EOT
+#ifndef Descriptor_of_#{@global_name}_Defined
+#define  Descriptor_of_#{@global_name}_Defined
+typedef struct { struct tag_#{@global_name}_VDES *vdes; } Descriptor( #{@global_name} );
+#endif
+EOT
   end
 
   #=== Signature# 関数の ID の define を出力
@@ -3317,27 +3346,29 @@ EOT
       @var.each { |v|
         init = v.get_initializer
         if init && init.instance_of?( Array ) then
-          type = v.get_type.get_original_type
+          type = v.get_type
+          org_type = v.get_type.get_original_type
 
-          if( type.kind_of? PtrType )then
+          if( org_type.kind_of? PtrType )then
             # PtrType は ArrayType にすり替える
 
             # 初期化子の要素数だけとする（後は 0)
             t2 = ArrayType.new( Expression.create_integer_constant( init.length, nil ) )
             t2.set_type( type.get_type )
             type = t2
+            org_type = t2
           end
 
           c = @ordered_cell_list[0]   # 仮の cell (実際には使われない)
           name_array = get_name_array( c )
           # f.print "const #{type0.get_type_str}\t#{@global_name}_#{v.get_name}_VAR_INIT#{type0.get_type_str_post} = "
           f.print "const #{type.get_type_str}\t#{@global_name}_#{v.get_name}_VAR_INIT#{type.get_type_str_post} = "
-          if type.kind_of? StructType then
+          if org_type.kind_of? StructType then
             # celltype の default の初期値あり
             str = gen_cell_cb_init( f, c, name_array, type, init, v.get_identifier, 1, true )
-          elsif( type.kind_of?( PtrType ) || type.kind_of?( ArrayType ) ) then
+          elsif( org_type.kind_of?( PtrType ) || org_type.kind_of?( ArrayType ) ) then
             str = "{ "
-            type = type.get_type
+            type = org_type.get_type
             # mikan ポインタではなく、配列型としないと、ポインタ変数の領域の分、損する
             init.each { |i|
               str += gen_cell_cb_init( f, c, name_array, type, i, v.get_identifier, 1, true )
@@ -3604,8 +3635,6 @@ EOT
     name_array[8] = cell_CBP        # cell CBP
     name_array[9] = @global_name    # celltype global name
     name_array[10] = cell.get_global_name # cell global name
-
-    dbgPrint "cell=#{cell.get_name} has_CB?=#{has_CB?}  has_INIB?=#{has_INIB?} idx_is_id_act=#{@idx_is_id_act}\n"
 
     return name_array
   end
@@ -4328,6 +4357,7 @@ EOT
         end
 
         ft.get_paramlist.get_items.each{ |param|
+          # p "type_str: #{param.get_type.get_type_str}"
           f.print( "#{delim} #{param.get_type.get_type_str}" )
           f.print( " #{param.get_name}#{param.get_type.get_type_str_post}" )
           delim = ","
@@ -4463,6 +4493,7 @@ EOT
           f.print "#{delim}"
           delim = ", "
           f.print param.get_type.get_type_str
+          # p "type_str2: #{param.get_type.get_type_str}"
           f.print " "
           f.print param.get_name
           f.print param.get_type.get_type_str_post

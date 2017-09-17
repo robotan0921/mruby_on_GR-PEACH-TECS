@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: syntaxobj.rb 2374 2016-01-03 22:14:59Z okuma-top $
+#   $Id: syntaxobj.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 # mikan ruby の symbol と文字列の使い分けがどうしてもうまくいかないことが時々あるので name.to_sym を入れることにした
@@ -85,8 +85,13 @@ class Node
   end
 
   #=== 情報を表示する
-  def cdl_info( message )
-    Console.puts "info: #{message}"
+  def cdl_info( message, *arg )
+    Generator.info2( @locale, message, *arg )
+  end
+
+  #=== 情報を表示する
+  def cdl_info2( locale, message, *arg )
+    Generator.info2( locale, message, *arg )
   end
 
   def get_locale

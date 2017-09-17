@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: expression.rb 2061 2014-05-31 22:15:33Z okuma-top $
+#   $Id: expression.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 class Expression < Node
@@ -150,6 +150,7 @@ class Expression < Node
     case elements[0]
     when :IDENTIFIER
       nsp = elements[1]
+      # if nsp.is_name_only? && name_list && name_list.get_item( nsp.get_name ) then
       if nsp.is_name_only? && name_list && name_list.get_item( nsp.get_name ) then
         return "#{pre}#{nsp.get_name}#{post}"
       else
@@ -222,6 +223,113 @@ class Expression < Node
       return "#{elements_to_s(elements[1],name_list,pre,post)}||#{elements_to_s(elements[2],name_list,pre,post)}"
     when :OP_CEX
       return "#{elements_to_s(elements[1],name_list,pre,post)}?#{elements_to_s(elements[2],name_list,pre,post)}:#{elements_to_s(elements[3],name_list,pre,post)}"
+    else
+      raise "Unknown expression element: #{elemets[0]}. try -t and please report"
+    end
+    return ""
+  end
+
+  #=== Expression# 逆ポーランド文字列化
+  #param_list:: ParamlList  関数の引数リスト
+  def get_rpn( param_list = nil, name_list2 = nil )
+    return elements_rpn( @elements, param_list, name_list2 )
+  end
+
+  #=== Expression# 逆ポーランド文字列化 (private)
+  #name_list:: ParamlList  関数の引数リスト
+  def elements_rpn( elements, name_list = nil, name_list2 = nil )
+    if elements.instance_of? Token then
+      print "rpn: #{elements.to_s}\n"
+      return elements.to_s    # OP_DOT, OP_REF の右辺
+    end
+
+    case elements[0]
+    when :IDENTIFIER
+      nsp = elements[1]
+      #if nsp.is_name_only? && name_list && name_list.find( nsp.get_name ) then
+      if nsp.is_name_only? then
+        count = 0
+        # p "search: #{nsp.get_name}"
+        name_list.get_items.each{ |nm,val|
+          # p "    : #{nm.get_name} #{nsp.get_name.class} #{nm.get_name.class}"
+          if nsp.get_name == nm.get_name then
+            return " $#{count}"
+          end
+          count += 1
+        }
+        raise "not found parameter"
+      else
+        # return  elements[1].get_global_name
+        raise "not unexpected parameter"
+      end
+    when :INTEGER_CONSTANT, :FLOATING_CONSTANT, :OCTAL_CONSTANT, :HEX_CONSTANT, :CHARACTER_LITERAL, :STRING_LITERAL_LIST, :BOOL_CONSTANT
+      return elements[1].to_s
+    when :PARENTHESES
+      return elements_rpn( elements[1], name_list, name_list2 )
+    when :OP_SUBSC
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[1], "", name_list, name_list2 ) + " []"
+    when :OP_DOT
+      return elements_rpn( elements[1], name_list, name_list2 ) + " ."
+    when :OP_REF
+      return elements_rpn( elements[1], name_list, name_list2 ) + " ->"
+    when :OP_SIZEOF_EXPR
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #s"
+    when :OP_SIZEOF_TYPE
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #S"
+    when :OP_U_AMP
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #&"
+    when :OP_U_ASTER
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #*"
+    when :OP_U_PLUS
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #+"
+    when :OP_U_MINUS
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #-"
+    when :OP_U_TILDE
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #~"
+    when :OP_U_EXCLAM
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #!"
+    when :CAST
+      return elements_rpn( elements[1], name_list, name_list2 ) + " #(" + elements_rpn( elements[2], "", name_list, name_list2 ) + ")"
+    when :OP_MULT
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " *"
+    when :OP_DIV
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " /"
+    when :OP_REMAIN
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " %"
+    when :OP_ADD
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " +"
+    when :OP_SUB
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " -"
+    when :OP_LSFT
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " <<"
+    when :OP_RSFT
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " >>"
+    when :OP_LT
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " <"
+    when :OP_GT
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " >"
+    when :OP_LE
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " <="
+    when :OP_GE
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " >="
+    when :OP_EQ
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " =="
+    when :OP_NE
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " !="
+    when :OP_AND
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " &"
+    when :OP_EOR
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " ^"
+    when :OP_OR
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " |"
+    when :OP_LAND
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " &&"
+    when :OP_LOR
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " + elements_rpn( elements[2], "", name_list, name_list2 ) + " ||"
+    when :OP_CEX
+      return elements_rpn( elements[1], name_list, name_list2 ) + " " +
+             elements_rpn( elements[2], name_list, name_list2 ) + " " +
+             elements_rpn( elements[3], name_list, name_list2 ) + " ?:"
     else
       raise "Unknown expression element: #{elemets[0]}. try -t and please report"
     end
@@ -381,10 +489,18 @@ class Expression < Node
       cdl_error( "E1006 cannot evaluate \'->\' operator"  )
       return nil
     when :OP_SIZEOF_EXPR
-      cdl_error( "E1007 cannot evaluate \'sizeof\' operator"  )
+      if Generator.parsing_C? then
+        cdl_info( "I9999 cannot evaluate \'sizeof\' operator. this might causes later error."  )
+      else
+        cdl_error( "E1007 cannot evaluate \'sizeof\' operator"  )
+      end
       return nil
     when :OP_SIZEOF_TYPE
-      cdl_error( "E1008 cannot evaluate \'sizeof\' operator"  )
+      if Generator.parsing_C? then
+        cdl_info( "I9999 cannot evaluate \'sizeof\' operator. this might causes later error."  )
+      else
+        cdl_error( "E1008 cannot evaluate \'sizeof\' operator"  )
+      end
       return nil
     when :OP_U_AMP
       cdl_error( "E1009 cannot evaluate \'&\' operator"  )

@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: messages.rb 2061 2014-05-31 22:15:33Z okuma-top $
+#   $Id: messages.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 #== TECS の生成する各国語化必要な文字列
@@ -80,6 +80,20 @@ class TECSMsg
    body =~ /^[A-Z0-9]+/    # ウォーニング番号を取り出す
    num = $&
    msg = @@warning_message[ num.to_sym ]
+   if msg == nil then
+     m = body
+   else
+     m = num + " " + msg
+   end
+   return m
+ end
+
+ #=== TECSMsg#ローカライズされた情報メッセージを得る
+ # Generator.info2 から呼び出される
+ def self.get_info_message( body )
+   body =~ /^[A-Z0-9]+/    # 情報番号を取り出す
+   num = $&
+   msg = @@info_message[ num.to_sym ]
    if msg == nil then
      m = body
    else

@@ -34,11 +34,13 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: tecsgen.rb 2586 2016-06-19 11:17:08Z okuma-top $
+#   $Id: tecsgen.rb 2638 2017-05-29 14:05:52Z okuma-top $
 #++
 
 
 class TECSGEN
+
+  @@b_post_coded = false     # ポストコード生成開始後 true
 
   #=== import パス (-I) を末尾に追加
   # 既に登録済みであれば、追加しない
@@ -254,6 +256,7 @@ class TECSGEN
     # through プラグインで生成されたセルにも require も生成できる (set_definition_join の後ろで実施)
 
     ####  post コードの生成と構文解析 ####
+    @@b_post_coded = true     # ポストコード生成開始後 true
     # 引数がなければ、プラグインのポストコードを出力しない
     if ARGV.length > 0 then
       dbgPrint( "## Generating Post Code\n")
@@ -445,4 +448,8 @@ class TECSGEN
 
     open( "#{$gen_base}/tecsgen.timestamp", "w" ){|io|}
   end # finalize
+
+  def self.post_coded?
+    @@b_post_coded
+  end
 end # class TECSGEN

@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: bnf.y.rb 2586 2016-06-19 11:17:08Z okuma-top $
+#   $Id: bnf.y.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 class Generator
@@ -740,7 +740,7 @@ statement
         | region
         | import
         | import_C
-        | signature_plugin
+        | generate_statement
         | error   # エラー回復ポイント
 
 	
@@ -834,7 +834,7 @@ import
         | IMPORT '(' AB_STRING_LITERAL ')' ';'
 		{ Import.new( val[2], true ) }
 
-signature_plugin
+generate_statement
 #        : GENERATE '(' plugin_name ',' namespace_identifier ',' STRING_LITERAL ')' ';'  #1ok signature plugin
         : GENERATE '(' plugin_name ',' namespace_identifier ',' plugin_arg ')' ';'  #1ok signature plugin
 		{ Generate.new( val[2].val, val[4], val[6] ) }
@@ -1946,6 +1946,7 @@ end
 
   @@n_error = 0
   @@n_warning = 0
+  @@n_info = 0
 
   # このメソッドは構文解析、意味解析からのみ呼出し可（コード生成でエラー発生は不適切）
   def self.error( msg, *arg )
@@ -2019,6 +2020,39 @@ end
     end
   end
 
+  # このメソッドは構文解析、意味解析からのみ呼出し可
+  def self.info( msg, *arg )
+    locale = nil
+    self.info2( locale, msg, *arg )
+  end
+
+  def self.info2( locale, msg, *arg )
+    @@n_info += 1
+
+    msg = TECSMsg.get_info_message( msg )
+    # $1, $2, ... を arg で置換
+    count = 1
+    arg.each{ |a|
+      str = TECSIO.str_code_convert( msg, a.to_s )
+      msg.sub!( /\$#{count}/, str )
+      count += 1
+    }
+
+    # import_C の中でのウォーニング？
+    if @@import_C then
+      C_parser.info( msg )
+    else
+      if @@b_end_all_parse == false || locale == nil then
+        locale = @@current_locale[ @@generator_nest ]
+      end
+      if locale then
+        Console.puts "info: #{locale[0]}: line #{locale[1]} #{msg}"
+      else
+        Console.puts "info: #{msg}"
+      end
+    end
+  end
+
   def self.get_n_error
     @@n_error
   end
@@ -2027,8 +2061,16 @@ end
     @@n_warning
   end
 
+  def self.get_n_info
+    @@n_info
+  end
+
   def self.get_nest
     @@generator_nest
+  end
+
+  def self.parsing_C?
+    @@import_C
   end
 
   #===  '[' specifier 始め

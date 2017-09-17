@@ -33,7 +33,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: Makefile 84 2008-05-04 14:19:09Z okuma-top $
+#   $Id: Makefile 2640 2017-06-03 11:27:12Z okuma-top $
 #++
 
 LIB_PATH= tecslib/core

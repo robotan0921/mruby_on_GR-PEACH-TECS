@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: ctypes.rb 2626 2017-02-05 11:49:44Z okuma-top $
+#   $Id: ctypes.rb 2622 2017-01-04 13:19:33Z okuma-top $
 #++
 
 # CType は C_parser で定義される型を扱う CIntType, CFloatType などに include するもの

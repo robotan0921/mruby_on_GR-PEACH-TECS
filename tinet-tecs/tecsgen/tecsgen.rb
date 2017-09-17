@@ -35,7 +35,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: tecsgen.rb 2626 2017-02-05 11:49:44Z okuma-top $
+#   $Id: tecsgen.rb 2638 2017-05-29 14:05:52Z okuma-top $
 #++
 
 #= tecsgen  : TECS のジェネレータ
@@ -516,11 +516,14 @@ class TECSGEN
     require_tecsgen_lib 'tecslib/core/generate.rb'
     require_tecsgen_lib 'tecslib/core/gen_xml.rb'
     require_tecsgen_lib 'tecslib/core/tool_info.rb'
+    require_tecsgen_lib 'tecslib/core/tecsinfo.rb'
     require_tecsgen_lib 'tecslib/plugin/CelltypePlugin.rb'
+    require_tecsgen_lib 'tecslib/plugin/CompositePlugin.rb'
     require_tecsgen_lib 'tecslib/plugin/CellPlugin.rb'
     require_tecsgen_lib 'tecslib/plugin/SignaturePlugin.rb'
     require_tecsgen_lib 'tecslib/plugin/ThroughPlugin.rb'
     require_tecsgen_lib 'tecslib/plugin/DomainPlugin.rb'
+    require_tecsgen_lib 'tecslib/plugin/MultiPlugin.rb'
 
     # C 言語パーサ
     require_tecsgen_lib 'tecslib/core/C_parser.tab.rb'

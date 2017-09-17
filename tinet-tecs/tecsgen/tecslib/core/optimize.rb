@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: optimize.rb 2587 2016-07-31 13:26:28Z okuma-top $
+#   $Id: optimize.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 =begin
@@ -211,9 +211,9 @@ class Celltype
     @domain_roots.each{ |dn, regions|
       # domain_type は一つのノードに一つしかないので、一つの要素を無条件で取り出す
       if regions.length > 1 then
-        cdl_info( "celltype:#{@name} has cells in multi domain.\n" )
+        cdl_info( "I9999 celltype:#{@name} has cells in multi domain.\n" )
         if @idx_is_id == false then
-          cdl_info( "celltype:#{@name} forcely set idx_is_id\n" )
+          cdl_info( "I9999 celltype:#{@name} forcely set idx_is_id\n" )
         end
         @idx_is_id_act = true
       end

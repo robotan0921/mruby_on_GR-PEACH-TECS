@@ -32,7 +32,7 @@
  *   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
  *   の責任を負わない．
  *  
- *   $Id: TECSStruct.h 2554 2016-02-27 06:11:34Z okuma-top $ 
+ *   $Id: TECSStruct.h 2634 2017-04-08 12:28:00Z okuma-top $ 
  */
 
 #ifndef TECSStruct_h__
@@ -104,8 +104,6 @@
 	static mrb_value													\
 	Struct_ ## TAG ## _initialize( mrb_state *mrb, mrb_value self)		\
 	{																	\
-		mrb_int	length;													\
-		struct  TAG *structBody;										\
 																		\
 		DATA_TYPE( self ) = &Struct ## TAG ## Body_mrb_data_type;		\
 		DATA_PTR( self ) = mrb_malloc(mrb, sizeof(struct TAG)); 		\

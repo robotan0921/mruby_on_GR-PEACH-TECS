@@ -34,7 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
-#   $Id: pluginModule.rb 2081 2014-06-30 05:41:00Z okuma-top $
+#   $Id: pluginModule.rb 2633 2017-04-02 06:02:05Z okuma-top $
 #++
 
 #== プラグインをロードする側のモジュール
@@ -44,7 +44,11 @@ module PluginModule
   @@loaded_plugin_list = {}
 
   #=== プラグインをロードする
-  #return:: true : 成功、 false : 失敗
+  # return:: PluginClass
+  # V1.4.1 まで return:: true : 成功、 false : 失敗
+  #
+  # #{plugin_name}.rb をロードし、plugin_name クラスのオブジェクトを生成する．
+  # plugin_name が MultiPlugin の場合、get_plugin により、superClass のプラグインオブジェクトをロードする．
   #
   # すでにロードされているものは、重複してロードしない
   # load 時の例外はこのメソッドの中でキャッチされて false が返される
@@ -58,21 +62,27 @@ module PluginModule
           print( "load '#{plugin_name}.rb'\n" )
         end
         # "#{plugin_name}.rb" をロード（システム用ではないので、fatal エラーにしない）
-        if require_tecsgen_lib( "#{plugin_name}.rb", false ) == false
+        if require_tecsgen_lib( "#{plugin_name}.rb", false ) == false then
           cdl_error( "P2001 $1.rb : fail to load plugin" , plugin_name )
-          return false
+          return nil
         end
       end
 
-      plSuper = nil
-      # eval( "plSuper = #{plugin_name}.superclass" )
-      eval( "plSuper = #{plugin_name}" )
-      while plSuper != superClass && plSuper != nil
-        plSuper = plSuper.superclass
-      end
-      if plSuper == nil then
+      plClass = Object.const_get plugin_name
+      if ( plClass <= superClass ) then       # plClass inherits superClass
+        return plClass
+      elsif (plClass <= MultiPlugin) then     # plClass inherits MultiPlugin
+        dbgPrint "pluginClass=#{plClass}\n"
+        plugin_object = plClass.get_plugin superClass
+        dbgPrint "pluginClass=#{plugin_object}\n"
+        if plugin_object == nil then
+          cdl_error( "P9999 '$1': MultiPlugin not support '$2'", plugin_name, superClass.name )
+        end
+        @@loaded_plugin_list[ plugin_name.to_sym ] = :MultiPlugin
+        return plugin_object
+      else
         cdl_error( "P2002 $1: not kind of $2" ,  plugin_name, superClass.name )
-        return false
+        return nil
       end
     rescue Exception => evar
       if $debug then
@@ -80,9 +90,10 @@ module PluginModule
         pp evar.backtrace
       end
       cdl_error( "P2003 $1: load failed" , plugin_name )
-      return false
+      return nil
     end
-    return true
+    # ここへは来ない
+    return nil
   end
 
   #=== プラグインの gen_cdl_file を呼びして cdl ファイルを生成させ、解釈を行う
@@ -91,9 +102,14 @@ module PluginModule
       return
     end
     plugin_name = plugin_object.class.name.to_sym
-    if @@loaded_plugin_list[ plugin_name ] == nil
-      raise "#{plugin_name} might have different name "
-      # プラグインのファイル名と、プラグインのクラス名が相違する場合
+    if @@loaded_plugin_list[ plugin_name ] == :MultiPlugin then
+      p "#{plugin_name}: MultiPlugin"
+      return
+    elsif @@loaded_plugin_list[ plugin_name ] == nil then
+      #raise "#{plugin_name} might have different name "
+      ## プラグインのファイル名と、プラグインのクラス名が相違する場合
+      #MultiPlugin の get_plugin で返されたケースでは nil になっている
+      @@loaded_plugin_list[ plugin_name ] = 0
     end
     count = @@loaded_plugin_list[ plugin_name ]
     @@loaded_plugin_list[ plugin_name ] += 1
@@ -130,6 +146,9 @@ module PluginModule
   def self.gen_plugin_post_code file
     dbgPrint "PluginModule #{@@loaded_plugin_list}\n"
     @@loaded_plugin_list.each{ |plugin_name,count|
+      if count == :MultiPlugin then
+        next
+      end
       dbgPrint "PluginModule: #{plugin_name}\n"
       eval_str = "#{plugin_name}.gen_post_code( file )"
       if $verbose then

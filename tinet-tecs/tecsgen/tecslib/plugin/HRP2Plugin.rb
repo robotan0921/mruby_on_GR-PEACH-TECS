@@ -34,6 +34,7 @@
 #   アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
 #   の責任を負わない．
 #  
+#   $Id: HRP2Plugin.rb 2640 2017-06-03 11:27:12Z okuma-top $
 #++
 
 #
@@ -42,7 +43,7 @@
 class HRP2Plugin < DomainPlugin
 
   def initialize( region, name, option )
-    print "MyDomainPlugin: initialize: region=#{region.get_name}, domainName=#{name}, option=#{option}\n"
+    print "HRP2Plugin: initialize: region=#{region.get_name}, domainName=#{name}, option=#{option}\n"
   end
 
   def add_through_plugin( join, current_region, next_region, through_type )
@@ -53,7 +54,7 @@ class HRP2Plugin < DomainPlugin
     # join.get_port_name:Symbol 受け口
     # get_rhs_subscript:Integer or nil 受け口配列の添数 (Join::@rhs_subscript の説明参照)
     # return []
-    print "MyDomainPlugin: add_through_plugin: #{current_region.get_name}=>#{next_region.get_name}, #{join.get_owner.get_name}.#{join.get_definition.get_name}=>#{join.get_cell.get_name}.#{join.get_port_name}, #{through_type}\n"
+    print "HRP2Plugin: add_through_plugin: #{current_region.get_name}=>#{next_region.get_name}, #{join.get_owner.get_name}.#{join.get_definition.get_name}=>#{join.get_cell.get_name}.#{join.get_port_name}, #{through_type}\n"
 
     puts "=====Join Check Start====="
     puts "caller: #{join.get_owner.get_name.to_s}, callee: #{join.get_cell.get_name.to_s}"
@@ -107,7 +108,7 @@ class HRP2Plugin < DomainPlugin
   end
 
   def joinable?(current_region, next_region, through_type )
-    print "MyDomainPlugin: joinable? from #{current_region.get_name} to #{next_region.get_name} (#{through_type})\n"
+    print "HRP2Plugin: joinable? from #{current_region.get_name} to #{next_region.get_name} (#{through_type})\n"
     return true
   end
 
