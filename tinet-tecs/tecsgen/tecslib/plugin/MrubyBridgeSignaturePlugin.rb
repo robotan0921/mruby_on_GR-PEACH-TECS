@@ -103,15 +103,21 @@ class MrubyBridgeSignaturePlugin < SignaturePlugin
     :char              => [:char,      "Char",     :Char, :INT   ],    # char は char_t として扱う
     :short             => [:short,     "Short",    :Int,  :INT   ],
     :long              => [:long,      "Long",     :Int,  :INT   ],
+#    :"long long"       => [:"long long","LongLong",:Int,  :INT   ],
+    :"long long"       => [:"long long","Int64",   :Int,   :INT   ],
 
     :"unsigned char"   => [:uchar_t,   "UChar",         :Char, :INT   ],
     :"unsigned int"    => [:"unsigned int",   "UInt",   :Int,  :INT   ],
     :"unsigned short"  => [:"unsigned short", "UShort", :Int,  :INT   ],
     :"unsigned long"   => [:"unsigned long",  "ULong",  :Int,  :INT   ],
+#    :"unsigned long long" => [:"unsigned long long","ULongLong",:Int,  :INT   ],
+    :"unsigned long long" => [:"unsigned long long","UInt64",:Int,  :INT   ],
     :"signed char"     => [:schar_t,   "SChar",    :Char,  :INT   ],
     :"signed int"      => [:int,       "Int",      :Int,   :INT   ],
     :"signed short"    => [:short,     "Short",    :Int,   :INT   ],
     :"signed long"     => [:long,      "Long",     :Int,   :INT   ],
+#    :"signed long long"=> [:"signed long long","LongLong",:Int,  :INT   ],
+    :"signed long long"=> [:"signed long long", "Int64",:Int,  :INT   ],
 
     :float32_t         => [:float32_t, "Float32",  :Float, :FLOAT ],
     :double64_t        => [:double64_t,"Double64", :Float, :FLOAT ],
@@ -386,7 +392,9 @@ class MrubyBridgeSignaturePlugin < SignaturePlugin
       tstr = tstr.sub( /uint/, "int" )               # volatile も無視
       tstr = tstr.sub( /[cs]char/, "char" )          # volatile も無視
     end
-    return @@TYPE_MAP[ tstr.to_sym ]
+    return @@TYPE_MAP[ tstr.to_sym ] if @@TYPE_MAP[ tstr.to_sym ]
+    cdl_error( "MRB9999 unknown type: '$1'. Sorry $2 can't handle this type.", tstr, self.class.name )
+    return @@TYPE_MAP[ :long ]
   end
 
   #===  CDL ファイルの生成
@@ -1190,6 +1198,7 @@ EOT
   def ptrMrb2C file, type, param
     ttype = type.get_type.get_original_type
     tment = get_type_map_ent ttype
+#p "ttype:#{ttype.get_type_str}, tment:#{tment}"
     tstr = tment[1]
 =begin
     case ttype
