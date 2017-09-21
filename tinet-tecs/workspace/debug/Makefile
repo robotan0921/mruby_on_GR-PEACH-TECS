@@ -81,6 +81,10 @@ MRBC = $(MRUBY_SRC_DIR)/bin/mrbc
 EXE := $(TARGET)
 endif
 
+#  TLSF 関係の設定
+TLSF_SRC_DIR = $(SRCDIR)/../TLSF-2.4.6
+
+
 #
 #  オブジェクトファイル名の拡張子の設定
 #
@@ -184,6 +188,7 @@ endif
 CDEFS := $(CDEFS) 
 INCLUDES := -I. -I$(SRCDIR)/include $(INCLUDES) -I$(SRCDIR) \
       		-I$(MRUBY_SRC_DIR)/include \
+      		-I$(TLSF_SRC_DIR)/src \
  			-I$(SRCDIR)/tecsgen/tecs/mruby \
 			-I$(SRCDIR)/tecsgen/tecs/TLSFMalloc \
             -I$(SRCDIR)/tecsgen/tecs/posix
