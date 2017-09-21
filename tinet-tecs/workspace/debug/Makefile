@@ -55,7 +55,7 @@ TARGET = gr_peach_gcc
 #
 SRCLANG = c
 ifeq ($(SRCLANG),c)
-	LIBS = -lc
+	LIBS = -lc -lm
 endif
 ifeq ($(SRCLANG),c++)
 	USE_CXX = true
@@ -67,6 +67,19 @@ endif
 #  ソースファイルのディレクトリの定義
 #
 SRCDIR = ../..
+
+#  mruby 関係の設定
+MRUBY_SRC_DIR = $(SRCDIR)/../mruby-1.3.0
+MRUBY_LIB = $(MRUBY_SRC_DIR)/build/ARM/lib/libmruby.a -lm
+
+# mruby compiler and test driver
+ifeq ($(OS),Windows_NT)
+MRBC = $(MRUBY_SRC_DIR)/bin/mrbc.exe
+EXE := $(TARGET).exe
+else
+MRBC = $(MRUBY_SRC_DIR)/bin/mrbc
+EXE := $(TARGET)
+endif
 
 #
 #  オブジェクトファイル名の拡張子の設定
@@ -169,8 +182,12 @@ ifdef OMIT_TECS
 	CDEFS := -DTOPPERS_OMIT_TECS $(CDEFS)
 endif
 CDEFS := $(CDEFS) 
-INCLUDES := -I. -I$(SRCDIR)/include $(INCLUDES) -I$(SRCDIR)
-LDFLAGS := $(LDFLAGS) -Wl,-Map=$(OBJNAME).map,--cref
+INCLUDES := -I. -I$(SRCDIR)/include $(INCLUDES) -I$(SRCDIR) \
+      		-I$(MRUBY_SRC_DIR)/include \
+ 			-I$(SRCDIR)/tecsgen/tecs/mruby \
+			-I$(SRCDIR)/tecsgen/tecs/TLSFMalloc \
+            -I$(SRCDIR)/tecsgen/tecs/posix
+LDFLAGS := $(LDFLAGS) -L $(MRUBY_SRC_DIR)/build/ARM/lib/ -Wl,-Map=$(OBJNAME).map,--cref
 LIBS := $(LIBS) $(CXXLIBS)
 CFLAGS = $(COPTS) $(CDEFS) $(INCLUDES)
 

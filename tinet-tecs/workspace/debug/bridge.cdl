@@ -1,0 +1,16 @@
+import(<kernel.cdl>);
+
+/* mrubyの本体 */
+import(<tMruby.cdl>);
+
+/*
+ * シグニチャプラグイン MrubyBridgePlugin の呼び出し。
+ */
+generate( MrubyBridgePlugin, sKernel, "" );
+
+/*
+ *  サンプルプログラムの定義
+ */
+cell nMruby::tsKernel BridgeKernel {
+	cTECS = Kernel.eKernel;
+};

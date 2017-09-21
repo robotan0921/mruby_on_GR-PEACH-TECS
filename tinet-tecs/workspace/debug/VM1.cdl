@@ -1,0 +1,13 @@
+import_C("sample1.h");
+import("bridge.cdl");
+
+cell nMruby::tMruby Mruby {
+	mrubyFile = "$(APP_RB)";
+	cInit = VM_TECSInitializer.eInitialize;
+};
+cell tTask MrubyTask1 {
+	cTaskBody = Mruby.eMrubyBody;
+	attribute = C_EXP("TA_ACT");
+	priority  = 10;
+	stackSize = C_EXP("STACK_SIZE");
+};
