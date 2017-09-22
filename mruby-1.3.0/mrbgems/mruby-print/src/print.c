@@ -32,7 +32,9 @@ printstr(mrb_state *mrb, mrb_value obj)
       mrb_free(mrb, utf16);
     } else
 #endif
-      fwrite(RSTRING_PTR(obj), RSTRING_LEN(obj), 1, stdout);
+      // fwrite(RSTRING_PTR(obj), RSTRING_LEN(obj), 1, stdout);
+//TODO:
+      fputs(RSTRING_PTR(obj), stdout);
   }
 }
 
