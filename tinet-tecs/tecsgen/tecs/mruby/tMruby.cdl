@@ -68,7 +68,7 @@ namespace nMruby{
     };
     factory{
       write("Makefile.tecsgen", "POST_TECSGEN_TARGET := $(POST_TECSGEN_TARGET) $cell_global$_mrb.c");
-      write("Makefile.tecsgen", "$cell_global$_mrb.c : %s tecs.timestamp Makefile", mrubyFile);
+      write("Makefile.tecsgen", "$cell_global$_mrb.c : %s gen/tecsgen.timestamp Makefile", mrubyFile);
       write("Makefile.tecsgen", "	$(MRBC) -B$cell_global$_irep -o$cell_global$_mrb.c %s", mrubyFile);
       write("Makefile.tecsgen", "TECS_COBJS := $(TECS_COBJS) $cell_global$_mrb.o");
       write("Makefile.tecsgen", "MRB_C := $(MRB_C) $cell_global$_mrb.c");
