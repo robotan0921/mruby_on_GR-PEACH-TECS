@@ -51,6 +51,11 @@ all:
 TARGET = gr_peach_gcc
 
 #
+#  mrubyのアプリケーションファイル名
+#
+APP_RB = sample.rb
+
+#
 #  プログラミング言語の定義
 #
 SRCLANG = c
@@ -71,6 +76,7 @@ SRCDIR = ../..
 #  mruby 関係の設定
 MRUBY_SRC_DIR = $(SRCDIR)/../mruby-1.3.0
 MRUBY_LIB = $(MRUBY_SRC_DIR)/build/ARM/lib/libmruby.a -lm
+LIBS := $(LIBS) $(MRUBY_LIB)
 
 # mruby compiler and test driver
 ifeq ($(OS),Windows_NT)
@@ -345,7 +351,7 @@ endif
 #
 #  ソースファイルのあるディレクトリに関する定義
 #
-vpath %.c $(KERNEL_DIRS) $(SYSSVC_DIRS) $(APPL_DIRS)
+vpath %.c $(KERNEL_DIRS) $(SYSSVC_DIRS) $(APPL_DIRS) $(SRCDIR)/tecsgen/tecs/mruby
 vpath %.S $(KERNEL_DIRS) $(SYSSVC_DIRS) $(APPL_DIRS)
 vpath %.cfg $(APPL_DIRS)
 vpath %.cdl $(APPL_DIRS)
