@@ -76,7 +76,13 @@
 
 
 #if TLSF_USE_LOCKS
-#include "target.h"
+#include "kernel.h"
+#include "kernel_cfg.h"
+#define TLSF_MLOCK_T ID
+#define TLSF_CREATE_LOCK(lock) (*lock = TLSF_SEM)
+#define TLSF_DESTROY_LOCK(lock) ini_sem(*lock)
+#define TLSF_ACQUIRE_LOCK(lock) wai_sem(*lock)
+#define TLSF_RELEASE_LOCK(lock) sig_sem(*lock)
 #else
 #define TLSF_CREATE_LOCK(_unused_)   do{}while(0)
 #define TLSF_DESTROY_LOCK(_unused_)  do{}while(0) 
@@ -169,8 +175,10 @@
 
 #ifdef USE_PRINTF
 #include <stdio.h>
-# define PRINT_MSG(fmt, args...) printf(fmt, ## args)
-# define ERROR_MSG(fmt, args...) printf(fmt, ## args)
+#include <t_stddef.h>
+#include <t_syslog.h>
+#define PRINT_MSG(fmt, args...) syslog(LOG_ERROR, fmt, ## args)
+#define ERROR_MSG(fmt, args...) syslog(LOG_ERROR, fmt, ## args)
 #else
 # if !defined(PRINT_MSG)
 #  define PRINT_MSG(fmt, args...)
