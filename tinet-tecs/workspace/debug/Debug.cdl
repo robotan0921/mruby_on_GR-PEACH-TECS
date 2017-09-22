@@ -20,8 +20,6 @@ import("netinet/tTCPAPIAdapter.cdl");
 
 import("tApplication.cdl");
 
-cell tKernel Kernel {
-};
 
 /* ネットワークの定義 */
 const T_IN4_ADDR MYIP4ADDRESS = C_EXP("MAKE_IPV4_ADDR(192,168,1,200)");

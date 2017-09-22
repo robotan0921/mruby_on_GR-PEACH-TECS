@@ -122,6 +122,7 @@ cell tBanner Banner {
 };
 
 
+cell tKernel Kernel{};
 
 /*
  *
