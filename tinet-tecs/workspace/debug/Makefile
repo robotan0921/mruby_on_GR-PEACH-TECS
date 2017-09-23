@@ -75,8 +75,8 @@ SRCDIR = ../..
 
 #  mruby 関係の設定
 MRUBY_SRC_DIR = $(SRCDIR)/../mruby-1.3.0
-MRUBY_LIB = $(MRUBY_SRC_DIR)/build/ARM/lib/libmruby.a -lm
-LIBS := $(LIBS) $(MRUBY_LIB)
+MRUBY_LIB = -lmruby #$(MRUBY_SRC_DIR)/build/ARM/lib/libmruby.a
+LIBS := $(MRUBY_LIB) $(LIBS)
 
 # mruby compiler and test driver
 ifeq ($(OS),Windows_NT)
