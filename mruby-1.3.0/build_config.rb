@@ -160,7 +160,7 @@ MRuby::CrossBuild.new('ARM') do |conf|
 
   [conf.cc, conf.objc, conf.asm].each do |cc|
     cc.command = ENV['CC'] || 'arm-none-eabi-gcc'
-    cc.flags = [ENV['CFLAGS'] || %w(-g -std=gnu99 -O3 -Wall -Werror-implicit-function-declaration)]
+    cc.flags = [ENV['CFLAGS'] || %w(-g -std=gnu99 -O3 -Wall -Werror-implicit-function-declaration -MD -MP -mlittle-endian -mcpu=cortex-a9 -mthumb -mthumb-interwork -marm -march=armv7-a -mfpu=vfpv3 -mfloat-abi=hard -mno-unaligned-access -fno-strict-aliasing)]
     cc.include_paths = ["#{MRUBY_ROOT}/include"],
 
     cc.defines = %w(DISABLE_GEMS)
