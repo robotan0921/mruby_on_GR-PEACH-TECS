@@ -88,8 +88,7 @@ EXE := $(TARGET)
 endif
 
 #  TLSF 関係の設定
-TLSF_SRC_DIR = $(SRCDIR)/../TLSF-2.4.6
-
+TLSF_SRC_DIR = $(SRCDIR)/../TLSF-2.4.6/src
 
 #
 #  オブジェクトファイル名の拡張子の設定
@@ -194,7 +193,7 @@ endif
 CDEFS := $(CDEFS) 
 INCLUDES := -I. -I$(SRCDIR)/include $(INCLUDES) -I$(SRCDIR) \
       		-I$(MRUBY_SRC_DIR)/include \
-      		-I$(TLSF_SRC_DIR)/src \
+      		-I$(TLSF_SRC_DIR) \
  			-I$(SRCDIR)/tecsgen/tecs/mruby \
 			-I$(SRCDIR)/tecsgen/tecs/TLSFMalloc \
             -I$(SRCDIR)/tecsgen/tecs/posix
@@ -218,7 +217,7 @@ ifdef USE_CXX
 else
 	APPL_COBJS :=
 endif
-APPL_COBJS := $(APPL_COBJS) log_output.o vasyslog.o t_perror.o strerror.o
+APPL_COBJS := $(APPL_COBJS) log_output.o vasyslog.o t_perror.o strerror.o tlsf.o
 APPL_CFLAGS := $(APPL_CFLAGS)
 ifdef APPLDIRS
 	INCLUDES := $(INCLUDES) $(foreach dir,$(APPLDIRS),-I$(dir))
@@ -351,7 +350,7 @@ endif
 #
 #  ソースファイルのあるディレクトリに関する定義
 #
-vpath %.c $(KERNEL_DIRS) $(SYSSVC_DIRS) $(APPL_DIRS) $(SRCDIR)/tecsgen/tecs/mruby
+vpath %.c $(KERNEL_DIRS) $(SYSSVC_DIRS) $(APPL_DIRS) $(SRCDIR)/tecsgen/tecs/mruby $(TLSF_SRC_DIR)
 vpath %.S $(KERNEL_DIRS) $(SYSSVC_DIRS) $(APPL_DIRS)
 vpath %.cfg $(APPL_DIRS)
 vpath %.cdl $(APPL_DIRS)
