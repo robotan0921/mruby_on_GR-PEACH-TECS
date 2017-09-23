@@ -221,8 +221,8 @@ mrb_open_TECS( CELLCB *p_cellcb)
 /*** ダミー関数 ***/
 #ifndef EV3_SOUND
 void _write(){}
-void _close(){}
-void _lseek(){}
+// void _close(){}
+// void _lseek(){}
 void _read(){}
 //void _fstat(){}
 //void _isatty(){}
@@ -231,6 +231,6 @@ void _read(){}
 //void _exit(){}
 //void _getpid(){}
 //void _kill(){}
-void _gettimeofday(){}
+// void _gettimeofday(){}
 void _fini(){}
 
