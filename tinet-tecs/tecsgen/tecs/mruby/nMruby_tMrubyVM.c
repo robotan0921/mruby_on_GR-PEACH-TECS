@@ -234,3 +234,12 @@ void _read(){}
 // void _gettimeofday(){}
 void _fini(){}
 
+/* mruby のメソッド p, puts, print を syslog で出力 */
+size_t fwrite(const void *buf, size_t size, size_t n, FILE *fp) {
+  CELLCB  *p_cellcb;
+  /* シリアルポートが結合されている場合のみ呼び出す */
+  if (is_cSerialPort_joined()) {
+    cSerialPort_write(buf, size);
+  }
+  return size;
+};
