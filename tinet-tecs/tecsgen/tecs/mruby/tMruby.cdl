@@ -32,7 +32,7 @@
  * 
  *  @(#) $Id: tMruby.cdl 2640 2017-06-03 11:27:12Z okuma-top $
  */
-//import(<syssvc/tSerialPort.cdl>);
+import(<syssvc/tSerialPort.cdl>);
 //import(<kernel.cdl>);
 
 import(<mruby.cdl>);
@@ -55,16 +55,20 @@ namespace nMruby{
     };
 
     /* MrubyBridgePlugin の生成する VM_TECSInitializeer.eInitialize へ結合する */
-    [optional]  call sInitializeBridge cInit;
+    [optional]
+      call sInitializeBridge cInit;
+    /* シリアルポート */
+    [optional]
+      call sSerialPort cSerialPort;
     /*
-     * アロケータ 
+     * アロケータ
      *  他と共有しないのであれば、このアロケータは排他制御される必要はない
      */
     call sMalloc cMalloc;
 
     FACTORY{
       write("Makefile.tecsgen", "clean_mrb_c :");
-      write("Makefile.tecsgen", "	rm -f $(MRB_C)"); 
+      write("Makefile.tecsgen", "	rm -f $(MRB_C)");
     };
     factory{
       write("Makefile.tecsgen", "POST_TECSGEN_TARGET := $(POST_TECSGEN_TARGET) $cell_global$_mrb.c");
@@ -87,6 +91,7 @@ namespace nMruby{
   composite tMruby{
     entry sTaskBody eMrubyBody;
     [optional]  call sInitializeBridge cInit;
+    [optional]  call sSerialPort cSerialPort;
     attr{
       [omit]char_t *mrubyFile;
       size_t memoryPoolSize = 1024 * 1024;    /** 1MB default **/
@@ -98,6 +103,7 @@ namespace nMruby{
     cell tMrubyVM MrubyVM{
       mrubyFile = composite.mrubyFile;
       cInit => composite.cInit;
+      cSerialPort => composite.cSerialPort;
       cMalloc = TLSFMalloc.eMalloc;
     };
     cell tMrubyTaskBody MrubyTaskBody {
@@ -124,6 +130,7 @@ namespace nMruby{
   composite tMrubyCyclic{
     entry sTaskBody eMrubyBody;
     [optional]  call sInitializeBridge cInit;
+    [optional]  call sSerialPort cSerialPort;
     attr{
       [omit]char_t *mrubyFile;
       size_t memoryPoolSize = 1024 * 1024;    /** 1MB default **/
@@ -135,6 +142,7 @@ namespace nMruby{
     cell tMrubyVM MrubyVM{
       mrubyFile = composite.mrubyFile;
       cInit => composite.cInit;
+      cSerialPort => composite.cSerialPort;
       cMalloc = TLSFMalloc.eMalloc;
     };
     cell tMrubyCyclicTaskBody MrubyTaskBody {
