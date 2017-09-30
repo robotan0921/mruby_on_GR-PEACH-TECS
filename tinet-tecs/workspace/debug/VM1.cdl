@@ -4,6 +4,7 @@ import("bridge.cdl");
 cell nMruby::tMruby Mruby {
 	mrubyFile = "$(APP_RB)";
 	cInit = VM_TECSInitializer.eInitialize;
+    cSerialPort = SerialPort1.eSerialPort;
 };
 cell tTask MrubyTask1 {
 	cTaskBody = Mruby.eMrubyBody;
