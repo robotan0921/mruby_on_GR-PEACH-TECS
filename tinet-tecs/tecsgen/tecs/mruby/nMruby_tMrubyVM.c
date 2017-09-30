@@ -103,8 +103,12 @@ eMrubyVM_initialize(CELLIDX idx)
   //VAR_mrb = mrb_open();
   VAR_mrb = mrb_open_TECS(p_cellcb);
   if (VAR_mrb == NULL) {
-    syslog(LOG_EMERG, "Invalid mrb_state, exiting test driver");
-//    cSerialPort_write("Invalid mrb_state, exiting test driver\n", 39);
+    if (is_cSerialPort_joined()) {
+      cSerialPort_write("Invalid mrb_state, exiting test driver\n", 39);
+    }
+    else {
+      syslog(LOG_EMERG, "Invalid mrb_state, exiting test driver");
+    }
     return false;
   }
 
