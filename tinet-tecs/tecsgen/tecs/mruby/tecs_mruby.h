@@ -36,6 +36,8 @@
 #ifndef tecs_mruby_h__
 #define tecs_mruby_h__
 
+#include "../tecs.h"
+
 #ifndef TECSGEN
 
 // tecsgen doesn't include actual mruby.h

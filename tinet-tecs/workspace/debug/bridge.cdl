@@ -3,14 +3,25 @@ import(<kernel.cdl>);
 /* mrubyの本体 */
 import(<tMruby.cdl>);
 
+import("sMrubyUDP.cdl");
+
 /*
  * シグニチャプラグイン MrubyBridgePlugin の呼び出し。
  */
 generate( MrubyBridgePlugin, sKernel, "" );
+generate( MrubyBridgePlugin, sMrubyUDP, "" );
 
 /*
  *  サンプルプログラムの定義
  */
 cell nMruby::tsKernel BridgeKernel {
 	cTECS = Kernel.eKernel;
+};
+
+cell nMruby::tsMrubyUDP BridgeUDP {
+	cTECS = MrubyUDP.eMrubyUDP;
+};
+
+cell tMrubyUDP MrubyUDP {
+	cAPI = UDPCEP_000.eAPI;
 };

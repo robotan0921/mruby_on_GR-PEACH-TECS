@@ -55,17 +55,17 @@ const uint16_t UDPPORT_001 = 10000;
 //     stackSize = 1024;
 // };
 
-cell tUDPApplicationBody UDPApplicationBody {
-    cUDPAPI4 = UDPCEP_000.eAPI;
-};
+// cell tUDPApplicationBody UDPApplicationBody {
+//     cUDPAPI4 = UDPCEP_000.eAPI;
+// };
 
-cell tTask UDPApplication {
-    cTaskBody = UDPApplicationBody.eTaskBody;
+// cell tTask UDPApplication {
+//     cTaskBody = UDPApplicationBody.eTaskBody;
 
-    attribute = C_EXP("TA_ACT");
-    priority  = 10;
-    stackSize = 512;
-};
+//     attribute = C_EXP("TA_ACT");
+//     priority  = 10;
+//     stackSize = 512;
+// };
 
 /* REP (受付け口) */
 cell tREP4 REP4_000 {
