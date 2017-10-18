@@ -4,12 +4,14 @@ import(<kernel.cdl>);
 import(<tMruby.cdl>);
 
 import("sMrubyUDP.cdl");
+import("sMrubyTCP.cdl");
 
 /*
  * シグニチャプラグイン MrubyBridgePlugin の呼び出し。
  */
 generate( MrubyBridgePlugin, sKernel, "" );
 generate( MrubyBridgePlugin, sMrubyUDP, "" );
+generate( MrubyBridgePlugin, sMrubyTCP, "" );
 
 /*
  *  サンプルプログラムの定義
@@ -22,6 +24,16 @@ cell nMruby::tsMrubyUDP BridgeUDP {
 	cTECS = MrubyUDP.eMrubyUDP;
 };
 
+cell nMruby::tsMrubyTCP BridgeTCP {
+	cTECS = MrubyTCP.eMrubyTCP;
+};
+
 cell tMrubyUDP MrubyUDP {
 	cAPI = UDPCEP_000.eAPI;
+};
+
+cell tMrubyTCP MrubyTCP {
+	cAPI = TCPCEP_000.eAPI;
+	cREP4_000 = REP4_000.eREP4;
+    cRepSelector = RepSelector.eRepSelector;
 };

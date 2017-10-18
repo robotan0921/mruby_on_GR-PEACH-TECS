@@ -54,8 +54,8 @@ TARGET = gr_peach_gcc
 #  mrubyのアプリケーションファイル名
 #
 # APP_RB = sample.rb
-# APP_RB = tcp_sample.rb
-APP_RB = udp_sample.rb
+# APP_RB = udp_sample.rb
+APP_RB = tcp_sample.rb
 
 #
 #  プログラミング言語の定義
