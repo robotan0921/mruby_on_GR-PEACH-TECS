@@ -8,6 +8,7 @@ class LED < TECS::TsLED
 
 	public
 	def self.color= (clr)
+		@@instance.off
 		@@instance.setColor( @@color_hash[clr] )
 	end
 	def self.off
