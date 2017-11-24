@@ -1,0 +1,10 @@
+import_C("gr_peach.h");
+
+signature sLED {
+	ER setColor([in]uint_t color);
+	ER off(void);
+};
+
+celltype tLED {
+	entry sLED eLED;
+};
