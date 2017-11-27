@@ -54,7 +54,7 @@ TARGET = gr_peach_gcc
 MRUBY_APP_DIR = $(SRCDIR)/workspace/mruby_app
 
 #  mrubyのクラスファイルのディレクトリ
-MRUBY_LIB_DIR = $(SRCDIR)/workspace/mruby_lib
+MRUBY_LIB_DIR = $(SRCDIR)/mruby_lib
 
 #  TECS で使用するライブラリ
 TECSLIB_DIR = $(SRCDIR)/tecs_lib
