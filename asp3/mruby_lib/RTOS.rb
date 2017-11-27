@@ -10,14 +10,12 @@ class RTOS < TECS::TsKernel
 		@@instance.delay(1000*time)
 	end
 	def self.msec
-		time = TECS::ULongPointer.new(1)
+		time = TECS::UInt64Pointer.new(1)
 		@@instance.getTime(time)
 		(time.value)/1000
 	end
 	def self.usec
-		time = TECS::ULongPointer.new(1)
-		@@instance.getMicroTime(time)
-		time.value
+		return @@instance.fetchHighResolutionTimer
 	end
 	def self.sleep
 		@@instance.sleep
