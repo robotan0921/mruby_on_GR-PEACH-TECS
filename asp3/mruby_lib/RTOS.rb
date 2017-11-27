@@ -12,12 +12,12 @@ class RTOS < TECS::TsKernel
 	def self.msec
 		time = TECS::ULongPointer.new(1)
 		@@instance.getTime(time)
-		time.value
+		(time.value)/1000
 	end
 	def self.usec
 		time = TECS::ULongPointer.new(1)
 		@@instance.getMicroTime(time)
-		(time.value)/1000
+		time.value
 	end
 	def self.sleep
 		@@instance.sleep
