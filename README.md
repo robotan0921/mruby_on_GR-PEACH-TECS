@@ -1,5 +1,5 @@
-# mruby on TINET+TECS
-mruby on TINET+TECS is a component-based framework for embedded IoT systems.
+# mruby on GR-PEACH+TECS
+mruby on GR-PEACH+TECS is a component-based framework for embedded IoT systems.
 This framework integrates mruby and TINET+TECS.
 You can run TINET functions from mruby programs.
 
