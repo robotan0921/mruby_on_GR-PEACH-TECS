@@ -468,8 +468,10 @@ cleankernel:
 	rm -f $(OFFSET_H) $(KERNEL_LIB_OBJS)
 	rm -f $(KERNEL_LIB_OBJS:%.o=$(DEPDIR)/%.d)
 
+.PHONY: clean_mrb_c
+
 .PHONY: realclean
-realclean: clean
+realclean: clean clean_mrb_c
 	rm -f $(REALCLEAN_FILES)
 
 #
