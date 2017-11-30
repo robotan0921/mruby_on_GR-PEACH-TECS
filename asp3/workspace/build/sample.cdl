@@ -11,17 +11,17 @@ import(<kernel.cdl>);
 /*
  *  ターゲット非依存のセルタイプの定義
  */
-import("syssvc/tSerialPort.cdl");
-import("syssvc/tSerialAdapter.cdl");
-import("syssvc/tSysLog.cdl");
-import("syssvc/tSysLogAdapter.cdl");
-import("syssvc/tLogTask.cdl");
-import("syssvc/tBanner.cdl");
+import(<syssvc/tSerialPort.cdl>);
+import(<syssvc/tSerialAdapter.cdl>);
+import(<syssvc/tSysLog.cdl>);
+import(<syssvc/tSysLogAdapter.cdl>);
+import(<syssvc/tLogTask.cdl>);
+import(<syssvc/tBanner.cdl>);
 
 /*
  *  ターゲット依存部の取り込み
  */
-import("target.cdl");
+import(<target.cdl>);
 
 /*
  *  「セルの組上げ記述」とは，"cell"で始まる行から，それに対応する"};"
