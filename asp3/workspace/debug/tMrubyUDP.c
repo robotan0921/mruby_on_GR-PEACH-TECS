@@ -80,7 +80,9 @@ eMrubyUDP_receive(CELLIDX idx, char_t* data, int32_t len, TMO tmout)
 	} /* end if VALID_IDX(idx) */
 
 	/* ここに処理本体を記述します #_TEFB_# */
-	data = "Hello, world!";
+	// data = "Hello, world!";
+	strncpy(data, "Hello, world!\n", len);
+	data[len-1] = '\0';
 	syslog(LOG_NOTICE, "==eMrubyUDP_receive==");
 	syslog(LOG_NOTICE, "data = %s", data);
 	syslog(LOG_NOTICE, "len = %d", len);
