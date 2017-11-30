@@ -11,8 +11,8 @@ mruby on GR-PEACH+TECS is a software develpment framework for running mruby (Lig
 		- Ruby
 		- GNU Make
 		- bison
-	* Cross-Compiler
-		- [GNUARM-NONE v16.01 Windows Toolchain (ELF)](https://gcc-renesas.com/rz/rz-download-toolchains/)
+	* [GNUARM-NONE v16.01 Windows Toolchain (ELF)](https://gcc-renesas.com/rz/rz-download-toolchains/)
+        - a cross-compiler
 
 	Note: it is probably possible to build it on Mac or Linux, but it has not been tested yet.
 
