@@ -64,7 +64,8 @@ tinet_cfg*
 
 # Others
 set_env.sh
-cp.sh
+*.sh
+*.bat
 .svn
 *.sublime-project
 *.sublime-workspace
