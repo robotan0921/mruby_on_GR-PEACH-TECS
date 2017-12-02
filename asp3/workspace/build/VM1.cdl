@@ -4,7 +4,7 @@ cell nMruby::tMruby Mruby {
 	mrubyFile =
 		"$(MRUBY_LIB_DIR)/RTOS.rb "
 		"$(MRUBY_LIB_DIR)/LED.rb "
-		"$(MRUBY_APP_DIR)/rtos_sample.rb";
+		"$(MRUBY_APP_DIR)/led_sample.rb";
 
 	cInit = VM_TECSInitializer.eInitialize;
     cSerialPort = SerialPort1.eSerialPort;
