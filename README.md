@@ -58,11 +58,3 @@ This framework integrates several developments and you should follow each licese
 
 ### TLSF - a dynamic memory allocator -
 * [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/)
-
-<!-- ### TINET+TECS ([https://github.com/robotan0921/tinet-tecs](https://github.com/robotan0921/tinet-tecs)) -->
-
-<!-- # Contacts
-Please feel free to ask me or send pull requests if you have any questions or find a bug.
-If you find a bug or any problem, please let us know by sending e-mail; com-wg@toppers.jp or users@toppers.jp.
-Note: [you have to participate ML before sending mail.](http://www.toppers.jp/en/community.html)
--->
