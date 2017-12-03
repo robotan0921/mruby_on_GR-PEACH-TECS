@@ -1,1 +1,0 @@
-../tecsgen/tecsmerge.rb
