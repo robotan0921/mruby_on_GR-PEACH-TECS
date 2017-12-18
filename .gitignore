@@ -69,3 +69,4 @@ set_env.sh
 .svn
 *.sublime-project
 *.sublime-workspace
+!.gitkeep
