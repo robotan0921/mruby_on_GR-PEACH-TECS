@@ -16,10 +16,7 @@ mruby on GR-PEACH+TECS is a software develpment framework for running mruby (Lig
 
 	Note: it is probably possible to build it on Mac or Linux, but it has not been tested yet.
 
-1. Clone the repository:
-	```bash
-	$ git clone https://github.com/robotan0921/mruby_on_GR-PEACH-TECS.git
-	```
+1. Download or Clone the repository:
 
 2. Build mruby:
 	```bash
