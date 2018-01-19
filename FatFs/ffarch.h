@@ -37,6 +37,7 @@
 #ifndef _MRUBY_ARDUINO_H_
 #define _MRUBY_ARDUINO_H_
 
+void initialize_fatfs();
 int mruby_arduino_init();
 void sdfs_cychdr(intptr_t exinf);
 

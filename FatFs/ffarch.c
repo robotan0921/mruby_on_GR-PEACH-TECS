@@ -56,10 +56,10 @@
 
 // static tlsf_t sys_tlsf;
 // static pool_t sys_pool;
-static void* mem_pool;
+static uint64_t mem_pool[64 * 1024];
 
-uint32_t  __HeapBase;
-uint32_t  __HeapLimit;
+// uint32_t  __HeapBase;
+// uint32_t  __HeapLimit;
 FATFS RomDisk;
 
 gpio_t ins;
@@ -77,6 +77,12 @@ void sys_init(void);
 bool_t romdisk_init();
 bool_t SD_begin();
 
+
+void initialize_fatfs()
+{
+	mruby_arduino_init();
+}
+
 int mruby_arduino_init()
 {
 	int result = -1;
@@ -92,9 +98,11 @@ int mruby_arduino_init()
 	result = SD_begin() ? 0 : -1;
 	if (result == 0) {
 		// ntstdio_printf(&ntstdio, "SD card (1:) OK!\n");
+		syslog(LOG_NOTICE, "SD card (1:) OK!");
 	}
 	else {
 		// ntstdio_printf(&ntstdio, "SD card (1:) NG!\n");
+		syslog(LOG_NOTICE, "SD card (1:) NG!");
 	}
 	sta_cyc(SDFS_CYC);
 
@@ -103,9 +111,11 @@ int mruby_arduino_init()
 
 	if (result == 0) {
 		// ntstdio_printf(&ntstdio, "ROM disk (0:) OK!\n");
+		syslog(LOG_NOTICE, "ROM disk (0:) OK!");
 	}
 	else {
 		// ntstdio_printf(&ntstdio, "ROM disk (0:) NG!\n");
+		syslog(LOG_NOTICE, "ROM disk (0:) NG!");
 	}
 
 	/* uploadディレクトリを作成しておく */
@@ -123,7 +133,7 @@ void sys_init(void)
 	// 	return;
 
 	// sys_pool = tlsf_add_pool(sys_tlsf, ((uint8_t *)&__HeapBase) + tlsf_size(), ((size_t)&__HeapLimit - (size_t)&__HeapBase) - tlsf_size());
-	init_memory_pool((size_t)&__HeapLimit - (size_t)&__HeapBase, mem_pool);
+	init_memory_pool(sizeof(mem_pool), mem_pool);
 }
 
 void sys_fini(void)
