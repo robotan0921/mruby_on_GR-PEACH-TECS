@@ -286,3 +286,11 @@ gr_peach_set_led(uint_t led, uint_t set)
 {
 	rza1_config_port(RZA1_PORT_P(6), led, set);
 }
+
+/*
+ *  ボタンの状態を取得
+ */
+bool_t
+gr_peach_get_button(void) {
+	return(sil_reh_mem(RZA1_PORT_PPR(6)) & 0x01);
+}

@@ -66,6 +66,7 @@
 
 #ifndef TOPPERS_MACRO_ONLY
 extern void gr_peach_set_led(uint_t led, uint_t set);
+extern bool_t gr_peach_get_button(void);
 #endif /* TOPPERS_MACRO_ONLY */
 
 #endif /* TOPPERS_GR_PEACH_H */
