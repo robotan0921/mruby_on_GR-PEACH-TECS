@@ -4,12 +4,15 @@ import(<kernel.cdl>);
 import(<tMruby.cdl>);
 
 import(<tLED.cdl>);
+import(<tButton.cdl>);
+
 
 /*
  * シグニチャプラグイン MrubyBridgePlugin の呼び出し。
  */
 generate( MrubyBridgePlugin, sKernel, "" );
 generate( MrubyBridgePlugin, sLED, "" );
+generate( MrubyBridgePlugin, sButton, "" );
 
 /*
  *  サンプルプログラムの定義
@@ -20,6 +23,10 @@ cell nMruby::tsKernel BridgeKernel {
 cell nMruby::tsLED BridgeLED {
 	cTECS = LED.eLED;
 };
+cell nMruby::tsButton BridgeButton {
+	cTECS = Button.eButton;
+};
 
 
 cell tLED LED {};
+cell tButton Button {};

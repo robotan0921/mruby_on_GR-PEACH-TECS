@@ -1,0 +1,9 @@
+import_C("gr_peach.h");
+
+signature sButton {
+	bool_t isPressed(void);
+};
+
+celltype tButton {
+	entry sButton eButton;
+};
